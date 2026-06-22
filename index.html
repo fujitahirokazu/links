@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>藤田弘和｜明日使える名著 — リンク集</title>
+<meta name="description" content="名著を『明日の仕事で使える形』に翻訳。YouTube・note・Instagram・X の発信をまとめたリンク集。">
+<!-- OGP -->
+<meta property="og:title" content="藤田弘和｜明日使える名著">
+<meta property="og:description" content="名著を『明日の仕事で使える形』に翻訳。各SNSのリンク集。">
+<meta property="og:type" content="website">
+<style>
+  :root{
+    --paper:#f4efe6;
+    --ink:#211c16;
+    --muted:#6f655a;
+    --card:#fffdf9;
+    --line:#e6ddcd;
+    --accent:#5b4636;
+    --shadow:0 2px 14px rgba(40,30,15,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+    background:
+      radial-gradient(1200px 500px at 50% -10%, #fbf7ef 0%, var(--paper) 60%) fixed;
+    color:var(--ink);
+    min-height:100dvh;
+    display:flex;
+    justify-content:center;
+    padding:32px 18px 56px;
+    line-height:1.6;
+  }
+  .wrap{width:100%;max-width:480px;display:flex;flex-direction:column;align-items:center}
+
+  .avatar{
+    width:96px;height:96px;border-radius:50%;
+    background:linear-gradient(160deg,#6b5340,#473428);
+    display:flex;align-items:center;justify-content:center;
+    color:#f4efe6;font-family:Georgia,"Yu Mincho","Hiragino Mincho ProN",serif;
+    font-size:30px;letter-spacing:2px;font-weight:700;
+    box-shadow:var(--shadow);border:3px solid #fffdf9;
+  }
+  h1{
+    font-family:Georgia,"Yu Mincho","Hiragino Mincho ProN",serif;
+    font-size:23px;margin-top:16px;letter-spacing:.5px;
+  }
+  .handle{color:var(--muted);font-size:13px;margin-top:3px}
+  .tagline{
+    text-align:center;font-size:14px;color:var(--ink);
+    margin-top:14px;max-width:340px;
+  }
+
+  .links{width:100%;margin-top:26px;display:flex;flex-direction:column;gap:13px}
+  a.link{
+    display:flex;align-items:center;gap:14px;
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:15px 18px;text-decoration:none;color:var(--ink);
+    box-shadow:var(--shadow);transition:transform .12s ease, box-shadow .12s ease;
+    position:relative;
+  }
+  a.link:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(40,30,15,.13)}
+  a.link:active{transform:translateY(0)}
+  .ic{flex:0 0 26px;width:26px;height:26px;display:flex;align-items:center;justify-content:center}
+  .ic svg{width:24px;height:24px;display:block}
+  .lt{display:flex;flex-direction:column;min-width:0}
+  .lt .t{font-weight:700;font-size:15px}
+  .lt .s{font-size:12px;color:var(--muted)}
+  .chev{margin-left:auto;color:#c9bca7;flex:0 0 auto}
+
+  a.link.feature{
+    background:linear-gradient(135deg,#2bb39b,#1f9f88);
+    border-color:transparent;color:#fff;
+  }
+  a.link.feature .lt .s{color:rgba(255,255,255,.85)}
+  a.link.feature .chev{color:rgba(255,255,255,.8)}
+  a.link.feature .ic svg{fill:#fff}
+
+  .badge{
+    position:absolute;top:-9px;right:14px;background:#e9b949;color:#3a2c00;
+    font-size:10px;font-weight:800;letter-spacing:.5px;padding:2px 8px;border-radius:999px;
+  }
+
+  footer{margin-top:34px;font-size:11px;color:#a89b88;text-align:center}
+  footer a{color:#8c7d68}
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="avatar">弘和</div>
+    <h1>明日使える名著</h1>
+    <div class="handle">藤田弘和 / Hirokazu Fujita</div>
+    <p class="tagline">名著を『明日の仕事で使える形』に翻訳。<br>年100冊のビジネス書を、5分の解説に。</p>
+
+    <nav class="links" id="links"></nav>
+
+    <footer>
+      © <span id="yr"></span> 藤田弘和 ｜ 明日使える名著
+    </footer>
+  </main>
+
+<script>
+  // ===== リンクはここだけ編集すればOK =====
+  // TikTokは @ハンドル確定後、下のコメントを外してURLを入れてください。
+  const LINKS = [
+    {
+      t:"note｜最新記事を読む",
+      s:"note.com/growthstrategy_f",
+      url:"https://note.com/growthstrategy_f",
+      feature:true, badge:"最新",
+      icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h13.5L21 7.5V21H3V3zm2 2v14h14V8.3L15.7 5H5zm2.5 4.2h9v2h-9v-2zm0 4h9v2h-9v-2z"/></svg>'
+    },
+    {
+      t:"YouTube｜最新の長尺動画",
+      s:"影響力の武器 — 6つの心理",
+      url:"https://youtu.be/RStsq-mmyvQ",
+      icon:'<svg viewBox="0 0 24 24" fill="#FF0000"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>'
+    },
+    {
+      t:"YouTube｜チャンネル登録",
+      s:"明日使える名著",
+      url:"https://www.youtube.com/channel/UC2azGu3SYtpa7bdhSaK8NRA?sub_confirmation=1",
+      icon:'<svg viewBox="0 0 24 24" fill="#FF0000"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>'
+    },
+    {
+      t:"Instagram",
+      s:"@mota_h.fujita",
+      url:"https://www.instagram.com/mota_h.fujita",
+      icon:'<svg viewBox="0 0 24 24" fill="#E1306C"><path d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.8.3 2.2.4.6.2 1 .5 1.4.9.4.4.7.8.9 1.4.2.4.4 1 .4 2.2.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.3 1.8-.4 2.2-.2.6-.5 1-.9 1.4-.4.4-.8.7-1.4.9-.4.2-1 .4-2.2.4-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.8-.3-2.2-.4-.6-.2-1-.5-1.4-.9-.4-.4-.7-.8-.9-1.4-.2-.4-.4-1-.4-2.2C2.2 15.6 2.2 15.2 2.2 12s0-3.6.1-4.9c.1-1.2.3-1.8.4-2.2.2-.6.5-1 .9-1.4.4-.4.8-.7 1.4-.9.4-.2 1-.4 2.2-.4C8.4 2.2 8.8 2.2 12 2.2zm0 1.8c-3.1 0-3.5 0-4.8.1-1.1.1-1.7.2-2.1.4-.5.2-.9.4-1.3.8-.4.4-.6.8-.8 1.3-.2.4-.3 1-.4 2.1-.1 1.3-.1 1.7-.1 4.8s0 3.5.1 4.8c.1 1.1.2 1.7.4 2.1.2.5.4.9.8 1.3.4.4.8.6 1.3.8.4.2 1 .3 2.1.4 1.3.1 1.7.1 4.8.1s3.5 0 4.8-.1c1.1-.1 1.7-.2 2.1-.4.5-.2.9-.4 1.3-.8.4-.4.6-.8.8-1.3.2-.4.3-1 .4-2.1.1-1.3.1-1.7.1-4.8s0-3.5-.1-4.8c-.1-1.1-.2-1.7-.4-2.1-.2-.5-.4-.9-.8-1.3-.4-.4-.8-.6-1.3-.8-.4-.2-1-.3-2.1-.4-1.3-.1-1.7-.1-4.8-.1zm0 3.1a4.9 4.9 0 1 1 0 9.8 4.9 4.9 0 0 1 0-9.8zm0 8a3.1 3.1 0 1 0 0-6.2 3.1 3.1 0 0 0 0 6.2zm6.3-8.2a1.15 1.15 0 1 1-2.3 0 1.15 1.15 0 0 1 2.3 0z"/></svg>'
+    },
+    {
+      t:"X (旧Twitter)",
+      s:"@hfujitalibconc1",
+      url:"https://x.com/hfujitalibconc1",
+      icon:'<svg viewBox="0 0 24 24" fill="#000"><path d="M18.2 2.3h3.3l-7.2 8.2L23 21.7h-6.6l-5.2-6.8-6 6.8H1.9l7.7-8.8L1.3 2.3H8l4.7 6.2 5.5-6.2zm-1.2 17.4h1.8L7.1 4.2H5.2l11.8 15.5z"/></svg>'
+    },
+    {
+      t:"TikTok",
+      s:"@fujit0227",
+      url:"https://www.tiktok.com/@fujit0227",
+      icon:'<svg viewBox="0 0 24 24" fill="#000"><path d="M16.6 5.8a4.3 4.3 0 0 1-2.6-3.8h-3v13.3a2.6 2.6 0 1 1-2.6-2.6c.27 0 .53.04.78.12V6.7a5.7 5.7 0 1 0 4.82 5.63V8.6a7.3 7.3 0 0 0 4.3 1.38V6.96a4.3 4.3 0 0 1-1.7-1.16z"/></svg>'
+    }
+  ];
+
+  const chev = '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
+  const root = document.getElementById('links');
+  root.innerHTML = LINKS.map(l => `
+    <a class="link${l.feature?' feature':''}" href="${l.url}" target="_blank" rel="noopener">
+      ${l.badge?`<span class="badge">${l.badge}</span>`:''}
+      <span class="ic">${l.icon}</span>
+      <span class="lt"><span class="t">${l.t}</span><span class="s">${l.s}</span></span>
+      ${chev}
+    </a>`).join('');
+  document.getElementById('yr').textContent = new Date().getFullYear();
+</script>
+</body>
+</html>
