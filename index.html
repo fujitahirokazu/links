@@ -153,6 +153,24 @@
       ${chev}
     </a>`).join('');
   document.getElementById('yr').textContent = new Date().getFullYear();
+
+  // 誘導クリック計測：各リンクのクリックをFlywheel KPI(clicks)へ送る（secret不要・fire&forget）
+  document.getElementById('links').addEventListener('click', function(e){
+    var a = e.target.closest('a.link'); if(!a) return;
+    try{
+      var p = new URLSearchParams(location.search);
+      var now = new Date();
+      var body = JSON.stringify({table:'clicks', row:{
+        ts: now.toISOString(),
+        date: now.toISOString().slice(0,10),
+        dest: (a.querySelector('.t')||{}).textContent || a.href,
+        src: p.get('s') || '',
+        referrer: document.referrer || ''
+      }});
+      fetch('https://script.google.com/macros/s/AKfycbwWHzuJf6AGNTis14pyroVSQ2cuO4OkUeOMQbOWrGbl9aXQs7DmPMMnWInw9kZz3es/exec',
+        {method:'POST', credentials:'omit', keepalive:true, headers:{'Content-Type':'text/plain;charset=utf-8'}, body:body});
+    }catch(_){}
+  });
 </script>
 </body>
 </html>
