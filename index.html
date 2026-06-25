@@ -82,6 +82,8 @@
     font-size:10px;font-weight:800;letter-spacing:.5px;padding:2px 8px;border-radius:999px;
   }
 
+  .sec-title{align-self:flex-start;margin:30px 4px 2px;font-family:Georgia,"Yu Mincho","Hiragino Mincho ProN",serif;font-size:15px;color:var(--accent);font-weight:700}
+  .aff-note{align-self:flex-start;margin:2px 4px 0;font-size:11px;color:var(--muted)}
   footer{margin-top:34px;font-size:11px;color:#a89b88;text-align:center}
   footer a{color:#8c7d68}
 </style>
@@ -94,6 +96,10 @@
     <p class="tagline">名著を『明日の仕事で使える形』に翻訳。<br>年100冊のビジネス書を、5分の解説に。</p>
 
     <nav class="links" id="links"></nav>
+
+    <div class="sec-title">紹介した本</div>
+    <div class="aff-note">※ リンクからの購入で収益が発生する場合があります（PR）</div>
+    <nav class="links" id="books"></nav>
 
     <footer>
       © <span id="yr"></span> 藤田弘和 ｜ 明日使える名著
@@ -154,23 +160,50 @@
     </a>`).join('');
   document.getElementById('yr').textContent = new Date().getFullYear();
 
-  // 誘導クリック計測：各リンクのクリックをFlywheel KPI(clicks)へ送る（secret不要・fire&forget）
-  document.getElementById('links').addEventListener('click', function(e){
+  // ===== 紹介した本（アフィリエイト導線） =====
+  // 収益化手順: もしもアフィリエイト/Amazonアソシエイト等に登録後、(1)AMAZON_TAGにタグを入れる か (2)各bookに url:"発行リンク" を足す。
+  // 空のままでも購入導線＋クリック計測は機能（未収益化でもデータは貯まる）。
+  const AMAZON_TAG = ""; // 例 "motah-22"
+  function bookUrl(b){
+    if(b.url) return b.url; // 個別の発行アフィリリンクがあれば最優先
+    const base = "https://www.amazon.co.jp/s?k=" + encodeURIComponent(b.q);
+    return AMAZON_TAG ? base + "&tag=" + AMAZON_TAG : base;
+  }
+  // 紹介した本（コンテンツで扱った本をここに追記すればOK）
+  const BOOKS = [
+    {t:"影響力の武器", s:"ロバート・チャルディーニ", q:"影響力の武器 チャルディーニ"},
+    {t:"世界標準の経営理論", s:"入山章栄", q:"世界標準の経営理論 入山章栄"},
+    {t:"マーケティング ビッグ・ピクチャー", s:"ジェフリー・パーカー", q:"マーケティング ビッグピクチャー パーカー"}
+  ];
+  const bookIcon = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 3h11a3 3 0 0 1 3 3v15l-4-2-4 2-4-2-2 1V5a2 2 0 0 1 2-2zm0 2v12.4l1-.5 4 2 4-2 2 1V6a1 1 0 0 0-1-1H4z"/></svg>';
+  document.getElementById('books').innerHTML = BOOKS.map(b => `
+    <a class="link" href="${bookUrl(b)}" target="_blank" rel="noopener sponsored" data-book="${b.t}">
+      <span class="ic">${bookIcon}</span>
+      <span class="lt"><span class="t">${b.t}</span><span class="s">${b.s}</span></span>
+      ${chev}
+    </a>`).join('');
+
+  // 誘導クリック計測：links/books 両方のクリックをFlywheel KPI(clicks)へ（secret不要・fire&forget）
+  function trackClick(e){
     var a = e.target.closest('a.link'); if(!a) return;
     try{
       var p = new URLSearchParams(location.search);
       var now = new Date();
+      var isBook = !!a.getAttribute('data-book');
       var body = JSON.stringify({table:'clicks', row:{
         ts: now.toISOString(),
         date: now.toISOString().slice(0,10),
-        dest: (a.querySelector('.t')||{}).textContent || a.href,
+        dest: (isBook ? '本: ' : '') + ((a.querySelector('.t')||{}).textContent || a.href),
+        kind: isBook ? 'affiliate' : 'channel',
         src: p.get('s') || '',
         referrer: document.referrer || ''
       }});
       fetch('https://script.google.com/macros/s/AKfycbwWHzuJf6AGNTis14pyroVSQ2cuO4OkUeOMQbOWrGbl9aXQs7DmPMMnWInw9kZz3es/exec',
         {method:'POST', credentials:'omit', keepalive:true, headers:{'Content-Type':'text/plain;charset=utf-8'}, body:body});
     }catch(_){}
-  });
+  }
+  document.getElementById('links').addEventListener('click', trackClick);
+  document.getElementById('books').addEventListener('click', trackClick);
 </script>
 </body>
 </html>
