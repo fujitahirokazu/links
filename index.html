@@ -98,7 +98,7 @@
     <nav class="links" id="links"></nav>
 
     <div class="sec-title">紹介した本</div>
-    <div class="aff-note">※ リンクからの購入で収益が発生する場合があります（PR）</div>
+    <div class="aff-note">※本リンクはアフィリエイト（PR）を含みます。Amazonのアソシエイトとして、藤田弘和は適格販売により収入を得ています。</div>
     <nav class="links" id="books"></nav>
 
     <footer>
@@ -163,7 +163,7 @@
   // ===== 紹介した本（アフィリエイト導線） =====
   // 収益化手順: もしもアフィリエイト/Amazonアソシエイト等に登録後、(1)AMAZON_TAGにタグを入れる か (2)各bookに url:"発行リンク" を足す。
   // 空のままでも購入導線＋クリック計測は機能（未収益化でもデータは貯まる）。
-  const AMAZON_TAG = ""; // 例 "motah-22"
+  const AMAZON_TAG = "asunomeicho-22"; // Amazonアソシエイトタグ(2026-07登録)
   function bookUrl(b){
     if(b.url) return b.url; // 個別の発行アフィリリンクがあれば最優先
     const base = "https://www.amazon.co.jp/s?k=" + encodeURIComponent(b.q);
@@ -173,7 +173,11 @@
   const BOOKS = [
     {t:"影響力の武器", s:"ロバート・チャルディーニ", q:"影響力の武器 チャルディーニ"},
     {t:"世界標準の経営理論", s:"入山章栄", q:"世界標準の経営理論 入山章栄"},
-    {t:"マーケティング ビッグ・ピクチャー", s:"ジェフリー・パーカー", q:"マーケティング ビッグピクチャー パーカー"}
+    {t:"マーケティング ビッグ・ピクチャー", s:"ジェフリー・パーカー", q:"マーケティング ビッグピクチャー パーカー"},
+    {t:"HIGH OUTPUT MANAGEMENT", s:"アンドリュー・グローブ", q:"HIGH OUTPUT MANAGEMENT グローブ"},
+    {t:"企業参謀", s:"大前研一", q:"企業参謀 大前研一"},
+    {t:"イシューからはじめよ", s:"安宅和人", q:"イシューからはじめよ 安宅和人"},
+    {t:"THE MODEL", s:"福田康隆", q:"THE MODEL 福田康隆"}
   ];
   const bookIcon = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 3h11a3 3 0 0 1 3 3v15l-4-2-4 2-4-2-2 1V5a2 2 0 0 1 2-2zm0 2v12.4l1-.5 4 2 4-2 2 1V6a1 1 0 0 0-1-1H4z"/></svg>';
   document.getElementById('books').innerHTML = BOOKS.map(b => `
