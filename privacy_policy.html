@@ -1,16 +1,39 @@
 <!DOCTYPE html>
-<meta charset=utf-8>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>プライバシーポリシー｜明日使える名著 メディア自動化</title>
+<style>body{font-family:-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;max-width:760px;margin:40px auto;padding:0 18px;line-height:1.8;color:#1f2a44}h1{font-size:22px}h2{font-size:16px;margin-top:26px;border-left:4px solid #c8963b;padding-left:8px}a{color:#1a5fb4}small{color:#6a7488}code{background:#f0f2f5;padding:1px 4px;border-radius:3px}</style>
+</head>
+<body>
 <h1>プライバシーポリシー</h1>
-<p>アプリ名: 明日使える名著 メディア自動化 YouTubeアップローダー。最終更新: 2026-07-12。本アプリは運営者本人が管理するYouTubeチャンネル @fujita.meicho に、本人が作成した動画をアップロードおよび公開予約するためだけに使用する個人運用ツールです。第三者ユーザー向けサービスではありません。</p>
-<h2>アクセスする情報とスコープ</h2>
-<p>Google OAuth 2.0 を通じて YouTube Data API の youtube.upload 本人チャンネルへの動画アップロード および youtube.force-ssl 公開予約とメタデータ更新 にアクセスします。認可した本人アカウントのYouTubeデータのみで、他ユーザーのデータや位置情報等は取得しません。</p>
-<h2>利用目的</h2>
-<p>本人が用意した動画とメタデータ タイトル・説明・タグ・公開日時 を本人チャンネルにアップロードおよび公開予約する目的にのみ利用します。</p>
-<h2>保存と共有</h2>
-<p>OAuthトークンは運営者本人が管理する環境にのみ保存し、第三者に共有・販売・譲渡しません。広告・プロファイリング等の二次利用は行いません。</p>
-<h2>データの削除</h2>
-<p>運営者はGoogleアカウントのセキュリティ設定からいつでも本アプリのアクセス権を取り消せます。取り消し後、保存済みトークンは破棄します。</p>
-<h2>ポリシー遵守</h2>
-<p>本アプリは YouTube API Services Terms of Service および Google Privacy Policy を遵守します。</p>
-<h2>連絡先</h2>
-<p>藤田弘和 / kasumigaoka44@gmail.com</p>
+<small>アプリ名: 明日使える名著 メディア自動化（YouTube アップローダー）／最終更新: 2026-07-13</small>
+
+<h2>1. 概要</h2>
+<p>本アプリは、運営者本人が管理するYouTubeチャンネル（@fujita.meicho）に、本人が作成した動画コンテンツをアップロードおよび公開予約するためだけに使用する、個人運用のツールです。第三者のユーザーを対象としたサービスではありません。</p>
+
+<h2>2. YouTube API サービスの利用</h2>
+<p>本アプリは <a href="https://developers.google.com/youtube/v3">YouTube API サービス</a> を利用します。利用にあたっては <a href="https://www.youtube.com/t/terms">YouTube 利用規約</a> および <a href="https://developers.google.com/youtube/terms/api-services-terms-of-service">YouTube API Services Terms of Service</a> が適用されます。Google によるユーザー情報の取り扱いについては <a href="https://policies.google.com/privacy">Google プライバシーポリシー（https://policies.google.com/privacy）</a> をご参照ください。</p>
+
+<h2>3. アクセスする情報とスコープ</h2>
+<p>本アプリは Google OAuth 2.0 を通じて、以下の YouTube Data API スコープにアクセスします。</p>
+<ul>
+<li><code>https://www.googleapis.com/auth/youtube.upload</code> — 本人チャンネルへの動画アップロード</li>
+<li><code>https://www.googleapis.com/auth/youtube.force-ssl</code> — アップロード済み動画の公開予約（publishAt）・メタデータ更新</li>
+</ul>
+<p>アクセスするのは認可した本人アカウントのYouTubeデータのみで、他ユーザーのデータや、YouTube以外の個人情報（連絡先・位置情報等）は取得しません。</p>
+
+<h2>4. 情報の利用目的</h2>
+<p>取得したアクセストークンおよびAPIアクセスは、本人が用意した動画ファイルとメタデータ（タイトル・説明・タグ・公開日時）を本人チャンネルにアップロード／公開予約する目的にのみ利用します。</p>
+
+<h2>5. 情報の保存・共有・削除（データ削除ポリシー）</h2>
+<p>OAuthトークンは運営者本人が管理する環境（ローカルPCおよびGitHub Secrets）にのみ保存し、第三者に共有・販売・譲渡しません。取得したデータを用いた広告・プロファイリング・二次利用は行いません。YouTube API から取得した公開統計データを保存する場合は、YouTube API Services のデベロッパーポリシーに従い、原則として30日以内に削除します。運営者は <a href="https://myaccount.google.com/permissions">Google アカウントのセキュリティ設定（アカウントにアクセスできるアプリ）</a> からいつでも本アプリのアクセス権を取り消すことができ、取り消し後は保存済みのトークンおよび関連データを速やかに破棄します。</p>
+
+<h2>6. Google / YouTube ポリシーの遵守</h2>
+<p>本アプリは <a href="https://developers.google.com/youtube/terms/api-services-terms-of-service">YouTube API Services Terms of Service</a> および <a href="https://policies.google.com/privacy">Google Privacy Policy</a> を遵守します。</p>
+
+<h2>7. お問い合わせ</h2>
+<p>運営者: 藤田弘和 ／ お問い合わせ: kasumigaoka44@gmail.com</p>
+</body>
+</html>
