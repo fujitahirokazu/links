@@ -93,7 +93,7 @@
     <div class="avatar">弘和</div>
     <h1>明日使える名著</h1>
     <div class="handle">藤田弘和 / Hirokazu Fujita</div>
-    <p class="tagline">名著を『明日の仕事で使える形』に翻訳。<br>年100冊のビジネス書を、5分の解説に。</p>
+    <p class="tagline">事業会社で経営戦略・オペレーション改善に携わる<b>現役の実務家</b>。<br>名著の理論を、明日の意思決定で使える形に翻訳します。</p>
 
     <nav class="links" id="links"></nav>
 
@@ -112,22 +112,29 @@
   // TikTokは @ハンドル確定後、下のコメントを外してURLを入れてください。
   const LINKS = [
     {
-      t:"note｜最新記事を読む",
+      t:"note｜深掘りを読む",
       s:"note.com/growthstrategy_f",
       url:"https://note.com/growthstrategy_f",
-      feature:true, badge:"最新",
+      feature:true, badge:"深掘り",
       icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h13.5L21 7.5V21H3V3zm2 2v14h14V8.3L15.7 5H5zm2.5 4.2h9v2h-9v-2zm0 4h9v2h-9v-2z"/></svg>'
     },
     {
-      t:"YouTube｜最新の長尺動画",
-      s:"影響力の武器 — 6つの心理",
-      url:"https://youtu.be/RStsq-mmyvQ",
-      icon:'<svg viewBox="0 0 24 24" fill="#FF0000"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>'
+      t:"LinkedIn｜現役の実務家とつながる",
+      s:"経営戦略・実務の議論はこちら",
+      url:"https://www.linkedin.com/in/%E5%BC%98%E5%92%8C-%E8%97%A4%E7%94%B0-708509268/",
+      feature:true, badge:"議論",
+      icon:'<svg viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg>'
     },
     {
       t:"YouTube｜チャンネル登録",
       s:"明日使える名著",
       url:"https://www.youtube.com/channel/UC2azGu3SYtpa7bdhSaK8NRA?sub_confirmation=1",
+      icon:'<svg viewBox="0 0 24 24" fill="#FF0000"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>'
+    },
+    {
+      t:"YouTube｜最新の長尺動画",
+      s:"影響力の武器 — 6つの心理",
+      url:"https://youtu.be/RStsq-mmyvQ",
       icon:'<svg viewBox="0 0 24 24" fill="#FF0000"><path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8zM9.6 15.6V8.4l6.3 3.6-6.3 3.6z"/></svg>'
     },
     {
@@ -152,7 +159,7 @@
 
   const chev = '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
   const root = document.getElementById('links');
-  root.innerHTML = LINKS.map(l => `
+  root.innerHTML = LINKS.filter(function(l){return l.url && l.url.indexOf('__')<0;}).map(l => `
     <a class="link${l.feature?' feature':''}" href="${l.url}" target="_blank" rel="noopener">
       ${l.badge?`<span class="badge">${l.badge}</span>`:''}
       <span class="ic">${l.icon}</span>
