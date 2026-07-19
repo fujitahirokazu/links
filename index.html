@@ -82,6 +82,8 @@
     font-size:10px;font-weight:800;letter-spacing:.5px;padding:2px 8px;border-radius:999px;
   }
 
+  a.link.contact{border-left:3px solid #b79a5f}
+  a.link.contact .ic svg{width:22px;height:22px}
   .sec-title{align-self:flex-start;margin:30px 4px 2px;font-family:Georgia,"Yu Mincho","Hiragino Mincho ProN",serif;font-size:15px;color:var(--accent);font-weight:700}
   .aff-note{align-self:flex-start;margin:2px 4px 0;font-size:11px;color:var(--muted)}
   footer{margin-top:34px;font-size:11px;color:#a89b88;text-align:center}
@@ -96,6 +98,12 @@
     <p class="tagline">事業会社で経営戦略・オペレーション改善に携わる<b>現役の実務家</b>。<br>名著の理論を、明日の意思決定で使える形に翻訳します。</p>
 
     <nav class="links" id="links"></nav>
+
+    <a class="link contact" id="contactLink" href="contact.html">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#5b4636" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>
+      <span class="lt"><span class="t">取材・登壇・ご相談</span><span class="s">現役の実務家に、直接ひとこと</span></span>
+      <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>
+    </a>
 
     <div class="sec-title">紹介した本</div>
     <div class="aff-note">※本リンクはアフィリエイト（PR）を含みます。Amazonのアソシエイトとして、藤田弘和は適格販売により収入を得ています。</div>
@@ -124,13 +132,6 @@
       url:"https://www.linkedin.com/in/%E5%BC%98%E5%92%8C-%E8%97%A4%E7%94%B0-708509268/",
       feature:true, badge:"議論",
       icon:'<svg viewBox="0 0 24 24" fill="#0A66C2"><path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.13 1.45-2.13 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0z"/></svg>'
-    },
-    {
-      t:"論点スライド｜“明日の1手”を見る",
-      s:"思考の絶対法則＋日常を論点で解く実践",
-      url:"ronten.html",
-      badge:"新",
-      icon:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>'
     },
     {
       t:"YouTube｜チャンネル登録",
@@ -174,6 +175,9 @@
       ${chev}
     </a>`).join('');
   document.getElementById('yr').textContent = new Date().getFullYear();
+
+  // 指名導線に流入元(?s=)を引き継ぐ
+  (function(){ var c=document.getElementById('contactLink'); if(c && location.search) c.href = 'contact.html' + location.search; })();
 
   // ===== 紹介した本（アフィリエイト導線） =====
   // 収益化手順: もしもアフィリエイト/Amazonアソシエイト等に登録後、(1)AMAZON_TAGにタグを入れる か (2)各bookに url:"発行リンク" を足す。

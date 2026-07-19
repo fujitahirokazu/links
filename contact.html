@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>取材・登壇・ご相談｜藤田弘和 明日使える名著</title>
+<meta name="description" content="現役の実務家 藤田弘和への、取材・登壇・実務のご相談の受付。">
+<meta property="og:title" content="取材・登壇・ご相談｜藤田弘和 明日使える名著">
+<meta property="og:description" content="現役の実務家への、取材・登壇・実務のご相談の受付。">
+<meta property="og:type" content="website">
+<meta name="robots" content="noindex">
+<style>
+  :root{
+    --paper:#f4efe6; --ink:#211c16; --muted:#6f655a; --card:#fffdf9;
+    --line:#e6ddcd; --accent:#5b4636; --shadow:0 2px 14px rgba(40,30,15,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+    background:radial-gradient(1200px 500px at 50% -10%, #fbf7ef 0%, var(--paper) 60%) fixed;
+    color:var(--ink); min-height:100dvh; display:flex; justify-content:center;
+    padding:32px 18px 56px; line-height:1.6;
+  }
+  .wrap{width:100%;max-width:480px;display:flex;flex-direction:column}
+  .back{align-self:flex-start;font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:14px}
+  .back:hover{color:var(--ink)}
+  h1{font-family:Georgia,"Yu Mincho","Hiragino Mincho ProN",serif;font-size:24px;letter-spacing:.5px}
+  .lead{font-size:14px;color:var(--ink);margin-top:12px}
+  .sub{font-size:12.5px;color:var(--muted);margin-top:8px}
+
+  form{margin-top:24px;display:flex;flex-direction:column;gap:15px}
+  label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:700;color:var(--accent)}
+  label .opt{font-weight:400;color:var(--muted);font-size:11px}
+  input,select,textarea{
+    font-family:inherit;font-size:15px;color:var(--ink);background:var(--card);
+    border:1px solid var(--line);border-radius:11px;padding:12px 13px;width:100%;
+    box-shadow:var(--shadow);transition:border-color .12s ease;
+  }
+  input:focus,select:focus,textarea:focus{outline:none;border-color:#c2ab7e}
+  textarea{min-height:120px;resize:vertical;line-height:1.55}
+  button{
+    margin-top:6px;font-family:inherit;font-size:15px;font-weight:700;color:#fff;
+    background:linear-gradient(135deg,#6b5340,#473428);border:none;border-radius:12px;
+    padding:15px;cursor:pointer;box-shadow:var(--shadow);transition:transform .12s ease,opacity .12s ease;
+  }
+  button:hover{transform:translateY(-2px)}
+  button:disabled{opacity:.55;cursor:default;transform:none}
+  .note{font-size:11.5px;color:var(--muted);margin-top:2px}
+
+  .done{display:none;margin-top:26px;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:22px 20px;box-shadow:var(--shadow);text-align:center}
+  .done h2{font-family:Georgia,"Yu Mincho","Hiragino Mincho ProN",serif;font-size:19px}
+  .done p{font-size:13.5px;color:var(--muted);margin-top:10px}
+  .done a{color:var(--accent)}
+
+  footer{margin-top:34px;font-size:11px;color:#a89b88;text-align:center}
+  footer a{color:#8c7d68}
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <a class="back" href="./">← 明日使える名著 リンク集にもどる</a>
+    <h1>取材・登壇・ご相談</h1>
+    <p class="lead">現役の実務家として、取材・登壇・実務のご相談をお受けしています。</p>
+    <p class="sub">いただいた内容には、私から直接ご返信します。営業目的のご連絡はご遠慮ください。</p>
+
+    <form id="f" novalidate>
+      <label>ご用件の種別
+        <select name="type" required>
+          <option value="" disabled selected>選んでください</option>
+          <option>取材・記事掲載</option>
+          <option>登壇・イベント・研修</option>
+          <option>実務のご相談・顧問</option>
+          <option>その他</option>
+        </select>
+      </label>
+      <label>お名前
+        <input name="name" type="text" required autocomplete="name" placeholder="山田 太郎">
+      </label>
+      <label>ご所属・媒体名 <span class="opt">（任意）</span>
+        <input name="org" type="text" autocomplete="organization" placeholder="会社名・媒体名など">
+      </label>
+      <label>ご連絡先メールアドレス
+        <input name="email" type="email" required autocomplete="email" inputmode="email" placeholder="you@example.com">
+      </label>
+      <label>ご用件
+        <textarea name="message" required placeholder="背景・ご依頼内容・希望時期など、差し支えない範囲でお書きください。"></textarea>
+      </label>
+      <button id="submit" type="submit">送信する</button>
+      <p class="note">送信で、上記の内容が私に届きます。返信先としてメールアドレスのみ使用します。</p>
+    </form>
+
+    <div class="done" id="done">
+      <h2>ありがとうございます。</h2>
+      <p>内容を受け取りました。数日以内に、いただいたメールアドレスへ私からご連絡します。<br>
+      お急ぎの場合は <a href="https://www.linkedin.com/in/%E5%BC%98%E5%92%8C-%E8%97%A4%E7%94%B0-708509268/" target="_blank" rel="noopener">LinkedIn</a> からもどうぞ。</p>
+    </div>
+
+    <footer>
+      © <span id="yr"></span> 藤田弘和 ｜ 明日使える名著<br>
+      <a href="privacy_policy.html">プライバシーポリシー</a> ｜ <a href="terms_of_service.html">利用規約</a>
+    </footer>
+  </main>
+
+<script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+  var GAS = 'https://script.google.com/macros/s/AKfycbwWHzuJf6AGNTis14pyroVSQ2cuO4OkUeOMQbOWrGbl9aXQs7DmPMMnWInw9kZz3es/exec';
+  var f = document.getElementById('f'), btn = document.getElementById('submit');
+
+  f.addEventListener('submit', function(e){
+    e.preventDefault();
+    if(!f.checkValidity()){ f.reportValidity(); return; }
+    btn.disabled = true; btn.textContent = '送信中…';
+    var now = new Date();
+    var p = new URLSearchParams(location.search);
+    var row = {
+      ts: now.toISOString(),
+      date: now.toISOString().slice(0,10),
+      type: f.type.value,
+      name: f.name.value.trim(),
+      org: f.org.value.trim(),
+      email: f.email.value.trim(),
+      message: f.message.value.trim(),
+      src: p.get('s') || '',
+      referrer: document.referrer || ''
+    };
+    var body = JSON.stringify({ table:'contact', row: row });
+    // 既存GASの clicks と同じ text/plain POST（プリフライト回避）。no-corsで確実に届ける。
+    fetch(GAS, { method:'POST', mode:'no-cors', credentials:'omit', keepalive:true,
+      headers:{'Content-Type':'text/plain;charset=utf-8'}, body: body })
+      .then(showDone).catch(showDone); // no-corsは不透明応答＝成功可否は読めないので楽観表示
+    // フェイルセーフ：3秒で必ず完了画面へ
+    setTimeout(showDone, 3000);
+  });
+
+  var shown = false;
+  function showDone(){
+    if(shown) return; shown = true;
+    f.style.display = 'none';
+    document.getElementById('done').style.display = 'block';
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+</script>
+</body>
+</html>
