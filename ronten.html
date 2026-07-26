@@ -170,9 +170,12 @@ body{background:var(--paper);color:var(--ink);font-family:var(--g);-webkit-font-
 <script>
 function lb(el){var im=el.querySelector('img');document.getElementById('lbi').src=im.src;document.getElementById('lb').classList.add('on');}
 document.addEventListener('keydown',function(e){if(e.key==='Escape')document.getElementById('lb').classList.remove('on');});
-// クリック計測：ハブと同じFlywheel KPI(clicks)へ（src=ronten）。fire&forget。
+// クリック計測：ハブと同じFlywheel KPI(clicks)へ。fire&forget。
+// kind='ronten' = このクリックが事例集ページ上で起きたこと／src = 流入元(?s=)。
+// ?s= が無い場合だけ src='ronten' にフォールバック（従来互換）。
 function track(e){var a=e.target.closest('a[data-dest]');if(!a)return;try{var n=new Date();
- var body=JSON.stringify({table:'clicks',row:{ts:n.toISOString(),date:n.toISOString().slice(0,10),dest:a.getAttribute('data-dest'),kind:'ronten',src:'ronten',referrer:document.referrer||''}});
+ var sp=new URLSearchParams(location.search); var s0=sp.get('s')||'ronten';
+ var body=JSON.stringify({table:'clicks',row:{ts:n.toISOString(),date:n.toISOString().slice(0,10),dest:a.getAttribute('data-dest'),kind:'ronten',src:s0,referrer:document.referrer||''}});
  fetch('https://script.google.com/macros/s/AKfycbwWHzuJf6AGNTis14pyroVSQ2cuO4OkUeOMQbOWrGbl9aXQs7DmPMMnWInw9kZz3es/exec',{method:'POST',credentials:'omit',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'},body:body});
  }catch(_){}}
 document.addEventListener('click',track);
