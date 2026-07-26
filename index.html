@@ -120,6 +120,13 @@
   // TikTokは @ハンドル確定後、下のコメントを外してURLを入れてください。
   const LINKS = [
     {
+      t:"論点で解く9事例｜1枚で見る",
+      s:"問いは、たった3つで解ける。",
+      url:"ronten.html",
+      internal:true, feature:true, badge:"新",
+      icon:'<svg viewBox="0 0 24 24" fill="none" stroke="#5b4636" stroke-width="1.8"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M7 8h6M7 11h9"/></svg>'
+    },
+    {
       t:"note｜深掘りを読む",
       s:"note.com/growthstrategy_f",
       url:"https://note.com/growthstrategy_f",
@@ -167,13 +174,16 @@
 
   const chev = '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
   const root = document.getElementById('links');
-  root.innerHTML = LINKS.filter(function(l){return l.url && l.url.indexOf('__')<0;}).map(l => `
-    <a class="link${l.feature?' feature':''}" href="${l.url}" target="_blank" rel="noopener">
+  root.innerHTML = LINKS.filter(function(l){return l.url && l.url.indexOf('__')<0;}).map(function(l){
+    var href = l.internal ? (l.url + location.search) : l.url;
+    var tgt  = l.internal ? '' : ' target="_blank" rel="noopener"';
+    return `
+    <a class="link${l.feature?' feature':''}" href="${href}"${tgt}>
       ${l.badge?`<span class="badge">${l.badge}</span>`:''}
       <span class="ic">${l.icon}</span>
       <span class="lt"><span class="t">${l.t}</span><span class="s">${l.s}</span></span>
       ${chev}
-    </a>`).join('');
+    </a>`;}).join('');
   document.getElementById('yr').textContent = new Date().getFullYear();
 
   // 指名導線に流入元(?s=)を引き継ぐ
