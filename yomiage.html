@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#f4f6f8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="読み上げ">
+<title>テキスト読み上げツール</title>
+<!-- v2_20260730 モバイル対応：貼り付け欄／WakeLock／MP3カード自動非表示／noindex（v1=2026-07-30 PC版） -->
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#ffffff; --ink:#1c2430; --sub:#66707d;
+    --accent:#2563eb; --accent-soft:#dbeafe; --line:#e3e7ec;
+    --ok:#16a34a; --warn:#b45309;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    font-family:"Segoe UI","Yu Gothic UI","Hiragino Sans",system-ui,sans-serif;
+    background:var(--bg); color:var(--ink); font-size:15px; line-height:1.7;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:20px 16px 60px;}
+  header{display:flex; align-items:baseline; gap:12px; margin-bottom:14px; flex-wrap:wrap;}
+  header h1{font-size:19px; font-weight:700;}
+  #srvStatus{font-size:12px; color:var(--sub);}
+  #srvStatus .dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:#9ca3af; margin-right:4px;}
+  #srvStatus.on .dot{background:var(--ok);}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:14px;}
+
+  /* drop zone */
+  #drop{
+    border:2px dashed #b9c2cd; border-radius:12px; background:var(--card);
+    padding:26px 16px; text-align:center; color:var(--sub); cursor:pointer;
+    margin-bottom:14px; transition:border-color .15s, background .15s;
+  }
+  #drop.hover{border-color:var(--accent); background:var(--accent-soft);}
+  #drop b{color:var(--ink);}
+  #drop .small{font-size:12px; margin-top:4px;}
+
+  /* queue */
+  #queue{display:none;}
+  #queue ul{list-style:none;}
+  #queue li{
+    padding:6px 10px; border-radius:8px; cursor:pointer; font-size:13.5px;
+    display:flex; justify-content:space-between; gap:8px;
+  }
+  #queue li:hover{background:#f0f3f7;}
+  #queue li.active{background:var(--accent-soft); font-weight:600;}
+  #queue li .len{color:var(--sub); font-weight:400;}
+
+  /* controls */
+  #meta{font-size:13px; color:var(--sub); margin-bottom:10px; display:none;}
+  .ctrlRow{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  button{
+    font-family:inherit; font-size:14px; border:1px solid var(--line);
+    background:#fff; color:var(--ink); border-radius:9px; padding:8px 14px; cursor:pointer;
+  }
+  button:hover{background:#f0f3f7;}
+  button:disabled{opacity:.45; cursor:default;}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600;}
+  button.primary:hover{background:#1d4fd8;}
+  .ctrlRow .sep{flex:1;}
+  select{
+    font-family:inherit; font-size:13px; border:1px solid var(--line);
+    border-radius:8px; padding:7px 8px; background:#fff; max-width:280px;
+  }
+  .rateBox{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--sub);}
+  input[type=range]{width:120px; accent-color:var(--accent);}
+
+  /* progress */
+  #progWrap{margin-top:12px; display:none;}
+  #progBar{height:6px; background:#e8ecf1; border-radius:3px; overflow:hidden;}
+  #progFill{height:100%; width:0%; background:var(--accent); transition:width .3s;}
+  #progText{font-size:12px; color:var(--sub); margin-top:4px;}
+
+  /* transcript */
+  #transcriptCard{display:none;}
+  #transcript{max-height:420px; overflow-y:auto; font-size:15px; padding:2px 4px;}
+  #transcript span.sent{
+    display:inline; cursor:pointer; border-radius:4px; padding:1px 2px;
+  }
+  #transcript span.sent:hover{background:#eef2f7;}
+  #transcript span.sent.cur{background:var(--accent-soft); box-shadow:0 0 0 2px var(--accent-soft);}
+  #transcript .para{margin-bottom:10px;}
+
+  /* paste */
+  #pasteBox{
+    width:100%; min-height:96px; font-family:inherit; font-size:16px;
+    border:1px solid var(--line); border-radius:9px; padding:10px;
+    resize:vertical; background:#fff; color:var(--ink);
+  }
+  #pasteCard .ctrlRow{margin-top:8px;}
+  .wakeBox{display:none; align-items:center; gap:6px; font-size:12.5px; color:var(--sub); margin-top:10px;}
+  .wakeBox input{accent-color:var(--accent);}
+
+  /* mobile */
+  @media (max-width:640px){
+    .wrap{padding:14px 10px 60px;}
+    button{padding:10px 16px; font-size:15px;}
+    select{font-size:16px; max-width:100%;}
+    #transcript{max-height:340px;}
+    header h1{font-size:17px;}
+  }
+
+  /* mp3 */
+  #mp3Card h2, #transcriptCard h2, #ctrlCard h2, #queue h2, #pasteCard h2{
+    font-size:13px; color:var(--sub); font-weight:600; margin-bottom:10px;
+    letter-spacing:.02em;
+  }
+  #mp3Status{font-size:13px; color:var(--sub); margin-top:8px; min-height:1.2em;}
+  #mp3Status.err{color:#b91c1c;}
+  #mp3Status.ok{color:var(--ok);}
+  .hint{font-size:12px; color:var(--sub); margin-top:10px;}
+  .spinner{
+    display:inline-block; width:12px; height:12px; border:2px solid var(--accent-soft);
+    border-top-color:var(--accent); border-radius:50%; margin-right:6px;
+    animation:spin .8s linear infinite; vertical-align:-2px;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>テキスト読み上げツール</h1>
+    <span id="srvStatus"><span class="dot"></span><span id="srvText">MP3サーバー確認中…</span></span>
+  </header>
+
+  <div id="drop">
+    <div><b>.txt / .md をここにドラッグ＆ドロップ</b>（クリックで選択・複数可）</div>
+    <div class="small">Markdownは記号を除去して本文だけ読み上げます。テキストが端末の外に送信されることはありません（MP3化はPC版のみ・localhost内で処理）。</div>
+    <input type="file" id="fileInput" accept=".txt,.md,.markdown,text/plain" multiple hidden>
+  </div>
+
+  <div class="card" id="pasteCard">
+    <h2>または、テキストを貼り付け</h2>
+    <textarea id="pasteBox" placeholder="ここに本文を貼り付け（Markdownも可・記号は除去して読み上げます）"></textarea>
+    <div class="ctrlRow">
+      <button id="btnPaste" class="primary">この文章を読み込む</button>
+      <button id="btnPasteClear">クリア</button>
+    </div>
+  </div>
+
+  <div class="card" id="queue">
+    <h2>ファイル（クリックで切替・再生終了で自動的に次へ）</h2>
+    <ul id="queueList"></ul>
+  </div>
+
+  <div class="card" id="ctrlCard" style="display:none;">
+    <div id="meta"></div>
+    <div class="ctrlRow">
+      <button id="btnPlay" class="primary">▶ 再生</button>
+      <button id="btnPause" disabled>⏸ 一時停止</button>
+      <button id="btnStop" disabled>⏹ 停止</button>
+      <button id="btnPrev" disabled>⏮ 前の文</button>
+      <button id="btnNext" disabled>⏭ 次の文</button>
+      <span class="sep"></span>
+      <select id="voiceSel" title="ブラウザ再生の音声"></select>
+      <span class="rateBox">速度 <input type="range" id="rateRange" min="0.5" max="2" step="0.1" value="1"><span id="rateVal">1.0x</span></span>
+    </div>
+    <div id="progWrap">
+      <div id="progBar"><div id="progFill"></div></div>
+      <div id="progText"></div>
+    </div>
+    <div class="hint" id="voiceHint"></div>
+    <label class="wakeBox" id="wakeRow"><input type="checkbox" id="wakeChk" checked> 読み上げ中は画面を消灯しない（スマホ向け）</label>
+  </div>
+
+  <div class="card" id="transcriptCard">
+    <h2>本文（文をクリックするとそこから再生）</h2>
+    <div id="transcript"></div>
+  </div>
+
+  <div class="card" id="mp3Card" style="display:none;">
+    <h2>MP3書き出し（edge-tts・持ち出し用）</h2>
+    <div class="ctrlRow">
+      <select id="mp3Voice"></select>
+      <select id="mp3Rate">
+        <option value="-10%">ゆっくり (-10%)</option>
+        <option value="+0%" selected>標準 (+0%)</option>
+        <option value="+8%">やや速め (+8%)</option>
+        <option value="+15%">速め (+15%)</option>
+        <option value="+25%">かなり速め (+25%)</option>
+      </select>
+      <button id="btnMp3" class="primary">MP3を作成して保存</button>
+    </div>
+    <div id="mp3Status"></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ===== 状態 ===== */
+let queue = [];            // {name, text, chars}
+let activeFile = -1;
+let sentences = [];        // 文の配列
+let sentOffsets = [];      // 各文までの累積文字数
+let charsTotal = 0;
+let curIdx = -1;
+let playing = false;
+let paused = false;
+let jaVoices = [];
+let rate = 1.0;
+let serverOn = false;
+let fastCount = 0;      // 音声エンジン不調検知（即完了の連続回数）
+let utterStart = 0;
+
+const $ = id => document.getElementById(id);
+const drop = $("drop"), fileInput = $("fileInput");
+const btnPlay = $("btnPlay"), btnPause = $("btnPause"), btnStop = $("btnStop");
+const btnPrev = $("btnPrev"), btnNext = $("btnNext");
+
+/* ===== テキスト処理 ===== */
+function decodeBuf(buf){
+  try{ return new TextDecoder("utf-8", {fatal:true}).decode(buf); }
+  catch(e){ return new TextDecoder("shift_jis").decode(buf); }
+}
+
+function stripMarkdown(t){
+  t = t.replace(/\r\n?/g, "\n");
+  t = t.replace(/```[\s\S]*?```/g, "（コード省略）");
+  t = t.replace(/^\s*\|?[\s:|-]+\|[\s:|-]*$/gm, "");      // 表の罫線行
+  t = t.replace(/^ {0,3}(?:[-*_] *){3,}$/gm, "");           // 水平線
+  t = t.replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1");           // 画像
+  t = t.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");            // リンク
+  t = t.replace(/^#{1,6}\s*/gm, "");                         // 見出し
+  t = t.replace(/^>\s?/gm, "");                              // 引用
+  t = t.replace(/^\s*[-*+]\s+/gm, "");                       // 箇条書き
+  t = t.replace(/^\s*\d+[.)]\s+/gm, "");                    // 番号リスト
+  t = t.replace(/\*\*([^*]+)\*\*/g, "$1");
+  t = t.replace(/__([^_]+)__/g, "$1");
+  t = t.replace(/\*([^*\n]+)\*/g, "$1");
+  t = t.replace(/`([^`]+)`/g, "$1");
+  t = t.replace(/~~([^~]+)~~/g, "$1");
+  t = t.replace(/<[^>\n]+>/g, "");                           // HTMLタグ
+  t = t.replace(/https?:\/\/\S+/g, "（URL）");
+  t = t.replace(/\|/g, "　");                                // 表の縦線
+  t = t.replace(/\n{3,}/g, "\n\n");
+  return t.trim();
+}
+
+function hardSplit(s, limit){
+  const res = [];
+  while(s.length > limit){
+    let cut = s.lastIndexOf("、", limit - 1);
+    if(cut < Math.floor(limit / 3)) cut = limit - 1;
+    res.push(s.slice(0, cut + 1));
+    s = s.slice(cut + 1);
+  }
+  if(s) res.push(s);
+  return res;
+}
+
+function splitSentences(text){
+  const out = [];
+  const paraIdx = [];   // 各文が属する段落番号（表示用）
+  const paras = text.split(/\n+/);
+  paras.forEach((p, pi) => {
+    p = p.trim();
+    if(!p) return;
+    for(const piece of p.split(/(?<=[。．！？!?])/)){
+      const s = piece.trim();
+      if(!s) continue;
+      for(const chunk of hardSplit(s, 160)){
+        out.push(chunk);
+        paraIdx.push(pi);
+      }
+    }
+  });
+  return {sentences: out, paraIdx};
+}
+
+/* ===== ファイル読み込み ===== */
+async function handleFiles(fileList){
+  const ok = [...fileList].filter(f => /\.(txt|md|markdown)$/i.test(f.name));
+  if(!ok.length){
+    alert(".txt / .md ファイルを選択してください");
+    return;
+  }
+  stopSpeech();
+  queue = [];
+  for(const f of ok){
+    const buf = await f.arrayBuffer();
+    let text = decodeBuf(buf);
+    if(/\.(md|markdown)$/i.test(f.name)) text = stripMarkdown(text);
+    else text = text.replace(/\r\n?/g, "\n").trim();
+    queue.push({name: f.name, text, chars: text.length});
+  }
+  renderQueue();
+  loadFile(0, false);
+}
+
+function renderQueue(){
+  const box = $("queue"), ul = $("queueList");
+  if(queue.length <= 1){ box.style.display = "none"; return; }
+  box.style.display = "block";
+  ul.innerHTML = "";
+  queue.forEach((q, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${escapeHtml(q.name)}</span><span class="len">${q.chars.toLocaleString()}字</span>`;
+    li.onclick = () => { stopSpeech(); loadFile(i, false); };
+    if(i === activeFile) li.classList.add("active");
+    ul.appendChild(li);
+  });
+}
+
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+function loadFile(i, autoplay){
+  activeFile = i;
+  const q = queue[i];
+  const sp = splitSentences(q.text);
+  sentences = sp.sentences;
+  charsTotal = sentences.reduce((a, s) => a + s.length, 0);
+  sentOffsets = [];
+  let acc = 0;
+  for(const s of sentences){ sentOffsets.push(acc); acc += s.length; }
+  curIdx = -1;
+
+  // transcript
+  const tr = $("transcript");
+  tr.innerHTML = "";
+  let curPara = -1, paraDiv = null;
+  sentences.forEach((s, idx) => {
+    if(sp.paraIdx[idx] !== curPara){
+      curPara = sp.paraIdx[idx];
+      paraDiv = document.createElement("div");
+      paraDiv.className = "para";
+      tr.appendChild(paraDiv);
+    }
+    const span = document.createElement("span");
+    span.className = "sent";
+    span.dataset.i = idx;
+    span.textContent = s;
+    paraDiv.appendChild(span);
+  });
+
+  $("ctrlCard").style.display = "block";
+  $("transcriptCard").style.display = "block";
+  $("meta").style.display = "block";
+  updateMeta();
+  updateProgress();
+  renderQueue();
+  updateMp3Ui();
+  if(autoplay && sentences.length) speakFrom(0);
+}
+
+function estMinutes(chars, r){
+  return Math.max(1, Math.round(chars / (450 * r)));  // 450字/分は目安
+}
+
+function updateMeta(){
+  const q = queue[activeFile];
+  if(!q) return;
+  $("meta").textContent =
+    `${q.name} ｜ ${charsTotal.toLocaleString()}字 ｜ ${sentences.length}文 ｜ 再生 約${estMinutes(charsTotal, rate)}分（450字/分想定の目安）`;
+}
+
+/* ===== 再生 ===== */
+function speakFrom(i){
+  if(!sentences.length) return;
+  if(i >= sentences.length){ onFileDone(); return; }
+  window.speechSynthesis.cancel();
+  paused = false;
+  playing = true;
+  curIdx = i;
+  highlight(i);
+  updateProgress();
+  acquireWake();
+  const u = new SpeechSynthesisUtterance(sentences[i]);
+  const v = selectedVoice();
+  if(v) u.voice = v;
+  u.lang = "ja-JP";
+  u.rate = rate;
+  utterStart = performance.now();
+  u.onend = () => { if(playing && !paused) advance(i); };
+  u.onerror = (e) => {
+    if(playing && e.error !== "canceled" && e.error !== "interrupted") advance(i);
+  };
+  window.speechSynthesis.speak(u);
+  setButtons();
+}
+
+function advance(i){
+  // 音声エンジンが実際は鳴っていない場合（即完了が連続）に暴走せず停止する
+  const dt = performance.now() - utterStart;
+  if(dt < 100 && sentences[i].length > 5){
+    fastCount++;
+    if(fastCount >= 5){
+      stopSpeech();
+      $("voiceHint").textContent =
+        "⚠ 音声が再生できていない可能性があります。別のブラウザ（Edge推奨）で開くか、タブのミュート設定を確認してください。";
+      return;
+    }
+  } else {
+    fastCount = 0;
+  }
+  nextAfter(i);
+}
+
+function nextAfter(i){
+  if(i + 1 < sentences.length) speakFrom(i + 1);
+  else onFileDone();
+}
+
+function onFileDone(){
+  playing = false; paused = false;
+  window.speechSynthesis.cancel();
+  if(activeFile + 1 < queue.length){
+    loadFile(activeFile + 1, true);   // 次のファイルへ自動連続再生
+  } else {
+    curIdx = -1;
+    highlight(-1);
+    updateProgress(true);
+    setButtons();
+    releaseWake();
+  }
+}
+
+function stopSpeech(){
+  playing = false; paused = false;
+  window.speechSynthesis.cancel();
+  setButtons();
+  releaseWake();
+}
+
+/* ===== 画面消灯防止（スマホ・対応ブラウザのみ表示） ===== */
+let wakeLock = null;
+if("wakeLock" in navigator) $("wakeRow").style.display = "flex";
+async function acquireWake(){
+  if(!("wakeLock" in navigator) || !$("wakeChk").checked || wakeLock) return;
+  try{
+    wakeLock = await navigator.wakeLock.request("screen");
+    wakeLock.addEventListener("release", () => { wakeLock = null; });
+  }catch(e){ /* 電池残量等で拒否されることがある */ }
+}
+function releaseWake(){
+  try{ if(wakeLock) wakeLock.release(); }catch(e){}
+  wakeLock = null;
+}
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "visible" && playing) acquireWake();
+});
+
+btnPlay.onclick = () => {
+  if(paused){ window.speechSynthesis.resume(); paused = false; setButtons(); return; }
+  fastCount = 0;
+  speakFrom(curIdx >= 0 ? curIdx : 0);
+};
+btnPause.onclick = () => {
+  if(playing && !paused){ window.speechSynthesis.pause(); paused = true; setButtons(); }
+};
+btnStop.onclick = () => { stopSpeech(); curIdx = -1; highlight(-1); updateProgress(); };
+btnPrev.onclick = () => { if(curIdx > 0){ fastCount = 0; speakFrom(curIdx - 1); } };
+btnNext.onclick = () => { if(curIdx < sentences.length - 1){ fastCount = 0; speakFrom(curIdx + 1); } };
+
+$("transcript").addEventListener("click", e => {
+  const t = e.target.closest("span.sent");
+  if(t){ fastCount = 0; speakFrom(parseInt(t.dataset.i, 10)); }
+});
+
+function setButtons(){
+  btnPlay.textContent = paused ? "▶ 再開" : "▶ 再生";
+  btnPause.disabled = !playing || paused;
+  btnStop.disabled = !playing && curIdx < 0;
+  btnPrev.disabled = !(curIdx > 0);
+  btnNext.disabled = !(curIdx >= 0 && curIdx < sentences.length - 1);
+}
+
+function highlight(i){
+  document.querySelectorAll("#transcript .cur").forEach(el => el.classList.remove("cur"));
+  if(i < 0) return;
+  const el = document.querySelector(`#transcript span[data-i="${i}"]`);
+  if(el){
+    el.classList.add("cur");
+    el.scrollIntoView({block: "center", behavior: "smooth"});
+  }
+}
+
+function updateProgress(done){
+  const w = $("progWrap");
+  if(!sentences.length){ w.style.display = "none"; return; }
+  w.style.display = "block";
+  const charsDone = done ? charsTotal : (curIdx >= 0 ? sentOffsets[curIdx] : 0);
+  const pct = charsTotal ? Math.round(charsDone / charsTotal * 100) : 0;
+  $("progFill").style.width = pct + "%";
+  const remain = estMinutes(charsTotal - charsDone, rate);
+  $("progText").textContent = done
+    ? "読み上げ完了"
+    : `${pct}% ｜ 文 ${Math.max(curIdx + 1, 0)}/${sentences.length} ｜ 残り約${remain}分（目安）`;
+}
+
+/* ===== ブラウザ音声 ===== */
+function loadVoices(){
+  jaVoices = window.speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith("ja"));
+  const sel = $("voiceSel");
+  sel.innerHTML = "";
+  if(!jaVoices.length){
+    const o = document.createElement("option");
+    o.textContent = "（日本語音声なし・既定音声で再生）";
+    o.value = "";
+    sel.appendChild(o);
+    $("voiceHint").textContent = "日本語音声が見つかりません。Microsoft Edge で開くと高品質な日本語音声（Nanami / Keita）が使えます。";
+    return;
+  }
+  let defIdx = jaVoices.findIndex(v => /Nanami|Keita/i.test(v.name) && /Online|Natural/i.test(v.name));
+  if(defIdx < 0) defIdx = jaVoices.findIndex(v => /Nanami|Keita/i.test(v.name));
+  if(defIdx < 0) defIdx = jaVoices.findIndex(v => /Google/i.test(v.name));
+  if(defIdx < 0) defIdx = 0;
+  jaVoices.forEach((v, i) => {
+    const o = document.createElement("option");
+    o.value = v.name;
+    o.textContent = v.name.replace(/^Microsoft /, "").replace(/ - Japanese.*$/i, "");
+    if(i === defIdx) o.selected = true;
+    sel.appendChild(o);
+  });
+  const hasNatural = jaVoices.some(v => /Online|Natural/i.test(v.name));
+  $("voiceHint").textContent = hasNatural ? "" :
+    "ヒント: Microsoft Edge で開くと、より自然な日本語音声（Nanami / Keita の Natural 系）が選べます。";
+}
+function selectedVoice(){
+  const name = $("voiceSel").value;
+  return jaVoices.find(v => v.name === name) || null;
+}
+window.speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+setTimeout(() => { if(!jaVoices.length) loadVoices(); }, 700);    // iOS Safariの遅延ロード対策
+setTimeout(() => { if(!jaVoices.length) loadVoices(); }, 2000);
+
+$("rateRange").oninput = e => {
+  rate = parseFloat(e.target.value);
+  $("rateVal").textContent = rate.toFixed(1) + "x";
+  updateMeta(); updateProgress();
+  // 反映は次の文から。再生中なら現在文を即読み直し
+  if(playing && !paused) speakFrom(curIdx);
+};
+
+/* ===== ドラッグ＆ドロップ ===== */
+drop.onclick = () => fileInput.click();
+fileInput.onchange = () => { handleFiles(fileInput.files); fileInput.value = ""; };
+["dragenter", "dragover"].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("hover"); }));
+["dragleave", "drop"].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("hover"); }));
+drop.addEventListener("drop", e => handleFiles(e.dataTransfer.files));
+
+/* ===== 貼り付け読み込み ===== */
+$("btnPaste").onclick = () => {
+  const raw = $("pasteBox").value.trim();
+  if(!raw){ alert("テキストを貼り付けてください"); return; }
+  stopSpeech();
+  const text = stripMarkdown(raw);
+  queue = [{name: "貼り付けテキスト", text, chars: text.length}];
+  activeFile = -1;
+  renderQueue();
+  loadFile(0, false);
+};
+$("btnPasteClear").onclick = () => { $("pasteBox").value = ""; };
+
+/* ===== MP3（ローカルサーバー経由・edge-tts） ===== */
+async function checkServer(){
+  if(location.protocol === "file:"){   // 単体で直接開いた場合＝再生専用
+    serverOn = false;
+    $("srvStatus").style.display = "none";
+    updateMp3Ui();
+    return;
+  }
+  try{
+    const r = await fetch("/ping", {cache: "no-store"});
+    const j = await r.json();
+    serverOn = !!(j.ok && j.edge);
+    $("srvStatus").style.display = "";
+    $("srvStatus").classList.toggle("on", serverOn);
+    $("srvText").textContent = serverOn ? "MP3サーバー接続中" : "MP3無効（PCで pip install edge-tts）";
+  }catch(e){
+    // スマホ・単体オープン時＝MP3機能ごと非表示（再生専用として動く）
+    serverOn = false;
+    $("srvStatus").style.display = "none";
+  }
+  updateMp3Ui();
+}
+
+async function loadMp3Voices(){
+  const sel = $("mp3Voice");
+  let voices = [
+    {ShortName: "ja-JP-KeitaNeural", Gender: "Male"},
+    {ShortName: "ja-JP-NanamiNeural", Gender: "Female"},
+  ];
+  if(location.protocol === "file:"){ fillMp3Voices(sel, voices); return; }
+  try{
+    const r = await fetch("/voices", {cache: "no-store"});
+    if(r.ok){
+      const j = await r.json();
+      if(Array.isArray(j) && j.length) voices = j;
+    }
+  }catch(e){ /* サーバー無しなら既定リスト */ }
+  fillMp3Voices(sel, voices);
+}
+
+function fillMp3Voices(sel, voices){
+  sel.innerHTML = "";
+  voices.forEach(v => {
+    const o = document.createElement("option");
+    o.value = v.ShortName;
+    const g = v.Gender === "Male" ? "男性" : v.Gender === "Female" ? "女性" : "";
+    o.textContent = v.ShortName.replace("ja-JP-", "").replace("Neural", "") + (g ? `（${g}）` : "");
+    if(v.ShortName === "ja-JP-KeitaNeural") o.selected = true;   // 既存資産と同じ既定
+    sel.appendChild(o);
+  });
+}
+
+function updateMp3Ui(){
+  const show = serverOn && !!queue[activeFile];
+  $("mp3Card").style.display = show ? "block" : "none";
+  $("btnMp3").disabled = !show;
+}
+
+$("btnMp3").onclick = async () => {
+  const q = queue[activeFile];
+  if(!q || !serverOn) return;
+  const btn = $("btnMp3"), st = $("mp3Status");
+  btn.disabled = true;
+  st.className = "";
+  const warn = q.chars > 20000 ? "（長文のため数分かかることがあります）" : "";
+  st.innerHTML = `<span class="spinner"></span>MP3生成中… ${q.chars.toLocaleString()}字 ${warn}`;
+  try{
+    const res = await fetch("/mp3", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({text: q.text, voice: $("mp3Voice").value, rate: $("mp3Rate").value}),
+    });
+    if(!res.ok){
+      let msg = "HTTP " + res.status;
+      try{ msg = (await res.json()).error || msg; }catch(e){}
+      throw new Error(msg);
+    }
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = q.name.replace(/\.(txt|md|markdown)$/i, "") + ".mp3";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    st.className = "ok";
+    st.textContent = `完了: ${a.download}（${(blob.size / 1048576).toFixed(1)}MB）→ ダウンロードフォルダに保存されました`;
+  }catch(e){
+    st.className = "err";
+    st.textContent = "失敗: " + e.message;
+  }finally{
+    btn.disabled = false;
+  }
+};
+
+checkServer();
+loadMp3Voices();
+setButtons();
+</script>
+</body>
+</html>
