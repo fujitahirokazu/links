@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="読み上げ">
 <title>テキスト読み上げツール</title>
-<!-- v2_20260730 モバイル対応：貼り付け欄／WakeLock／MP3カード自動非表示／noindex（v1=2026-07-30 PC版） -->
+<!-- v3_20260730 Word対応：.docx直接読込（mammoth.js・端末内抽出）／alert廃止（v2=モバイル対応, v1=PC版） -->
 <style>
   :root{
     --bg:#f4f6f8; --card:#ffffff; --ink:#1c2430; --sub:#66707d;
@@ -38,6 +38,8 @@
   #drop.hover{border-color:var(--accent); background:var(--accent-soft);}
   #drop b{color:var(--ink);}
   #drop .small{font-size:12px; margin-top:4px;}
+  #loadMsg:empty{display:none;}
+  #loadMsg{color:var(--warn); font-weight:600;}
 
   /* queue */
   #queue{display:none;}
@@ -129,9 +131,10 @@
   </header>
 
   <div id="drop">
-    <div><b>.txt / .md をここにドラッグ＆ドロップ</b>（クリックで選択・複数可）</div>
-    <div class="small">Markdownは記号を除去して本文だけ読み上げます。テキストが端末の外に送信されることはありません（MP3化はPC版のみ・localhost内で処理）。</div>
-    <input type="file" id="fileInput" accept=".txt,.md,.markdown,text/plain" multiple hidden>
+    <div><b>.txt / .md / .docx（Word）をここにドラッグ＆ドロップ</b>（クリックで選択・複数可）</div>
+    <div class="small">Word・Markdownは本文だけ抽出して読み上げます。抽出は端末内処理で、テキストが外部に送信されることはありません（MP3化はPC版のみ・localhost内で処理）。</div>
+    <div class="small" id="loadMsg"></div>
+    <input type="file" id="fileInput" accept=".txt,.md,.markdown,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
   </div>
 
   <div class="card" id="pasteCard">
@@ -273,21 +276,69 @@ function splitSentences(text){
 }
 
 /* ===== ファイル読み込み ===== */
+function showLoadMsg(msg, sticky){
+  const el = $("loadMsg");
+  el.textContent = msg || "";
+  clearTimeout(el._t);
+  if(msg && !sticky) el._t = setTimeout(() => { el.textContent = ""; }, 6000);
+}
+
+let mammothReady = null;
+function loadMammoth(){
+  if(window.mammoth) return Promise.resolve();
+  if(mammothReady) return mammothReady;
+  mammothReady = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js";
+    s.onload = resolve;
+    s.onerror = () => {
+      mammothReady = null;
+      reject(new Error("Word読込用ライブラリを取得できません（初回のみネット接続が必要です）"));
+    };
+    document.head.appendChild(s);
+  });
+  return mammothReady;
+}
+
+function cleanPlain(t){
+  t = t.replace(/\r\n?/g, "\n");
+  t = t.replace(/\[\d+\]/g, "");            // 脚注参照 [1] 等
+  t = t.replace(/https?:\/\/\S+/g, "（URL）");
+  t = t.replace(/\n{3,}/g, "\n\n");
+  return t.trim();
+}
+
+async function fileToText(f){
+  if(/\.docx$/i.test(f.name)){
+    showLoadMsg("Word読込中… " + f.name, true);
+    await loadMammoth();
+    const res = await window.mammoth.extractRawText({arrayBuffer: await f.arrayBuffer()});
+    return cleanPlain(res.value);
+  }
+  const text = decodeBuf(await f.arrayBuffer());
+  if(/\.(md|markdown)$/i.test(f.name)) return stripMarkdown(text);
+  return cleanPlain(text);
+}
+
 async function handleFiles(fileList){
-  const ok = [...fileList].filter(f => /\.(txt|md|markdown)$/i.test(f.name));
+  const ok = [...fileList].filter(f => /\.(txt|md|markdown|docx)$/i.test(f.name));
   if(!ok.length){
-    alert(".txt / .md ファイルを選択してください");
+    showLoadMsg("対応形式は .txt / .md / .docx です（.doc は非対応）");
     return;
   }
   stopSpeech();
   queue = [];
   for(const f of ok){
-    const buf = await f.arrayBuffer();
-    let text = decodeBuf(buf);
-    if(/\.(md|markdown)$/i.test(f.name)) text = stripMarkdown(text);
-    else text = text.replace(/\r\n?/g, "\n").trim();
-    queue.push({name: f.name, text, chars: text.length});
+    try{
+      const text = await fileToText(f);
+      if(text) queue.push({name: f.name, text, chars: text.length});
+      else showLoadMsg(f.name + "：本文が空でした");
+    }catch(e){
+      showLoadMsg("読込失敗 " + f.name + "：" + e.message);
+    }
   }
+  showLoadMsg("");
+  if(!queue.length) return;
   renderQueue();
   loadFile(0, false);
 }
@@ -551,7 +602,7 @@ drop.addEventListener("drop", e => handleFiles(e.dataTransfer.files));
 /* ===== 貼り付け読み込み ===== */
 $("btnPaste").onclick = () => {
   const raw = $("pasteBox").value.trim();
-  if(!raw){ alert("テキストを貼り付けてください"); return; }
+  if(!raw){ showLoadMsg("テキストを貼り付けてから押してください"); return; }
   stopSpeech();
   const text = stripMarkdown(raw);
   queue = [{name: "貼り付けテキスト", text, chars: text.length}];
