@@ -9,7 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="読み上げ">
 <title>テキスト読み上げツール</title>
-<!-- v3_20260730 Word対応：.docx直接読込（mammoth.js・端末内抽出）／alert廃止（v2=モバイル対応, v1=PC版） -->
+<!-- v4_20260730 ライブラリ対応：Drive+GASでPC↔スマホ共有／続き再生の端末間同期
+     （v3=.docx対応, v2=モバイル対応, v1=PC版） -->
 <style>
   :root{
     --bg:#f4f6f8; --card:#ffffff; --ink:#1c2430; --sub:#66707d;
@@ -87,6 +88,30 @@
   #transcript span.sent.cur{background:var(--accent-soft); box-shadow:0 0 0 2px var(--accent-soft);}
   #transcript .para{margin-bottom:10px;}
 
+  /* library */
+  #libCard h2 span.st{font-weight:400; color:var(--sub); margin-left:6px;}
+  #libList{margin:-4px 0 0;}
+  .libRow{
+    display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:9px;
+    cursor:pointer; border:1px solid transparent;
+  }
+  .libRow:hover{background:#f0f3f7;}
+  .libRow.cur{background:var(--accent-soft); border-color:#c7dbfe;}
+  .libRow .nm{flex:1; font-size:14px; word-break:break-all;}
+  .libRow .sz{font-size:12px; color:var(--sub); white-space:nowrap;}
+  .libRow .pg{
+    font-size:11.5px; font-weight:600; color:var(--accent); background:var(--accent-soft);
+    border-radius:20px; padding:2px 8px; white-space:nowrap;
+  }
+  .libRow .pg.done{color:#15803d; background:#dcfce7;}
+  #libEmpty{font-size:13px; color:var(--sub);}
+  #libSetup{margin-top:10px;}
+  #libUrl{
+    width:100%; font-family:inherit; font-size:15px; padding:9px 10px;
+    border:1px solid var(--line); border-radius:9px; margin-bottom:8px;
+  }
+  #libSetup .note{font-size:12px; color:var(--sub); margin-top:8px; line-height:1.6;}
+
   /* paste */
   #pasteBox{
     width:100%; min-height:96px; font-family:inherit; font-size:16px;
@@ -130,6 +155,25 @@
     <span id="srvStatus"><span class="dot"></span><span id="srvText">MP3サーバー確認中…</span></span>
   </header>
 
+  <div class="card" id="libCard">
+    <h2>ライブラリ<span class="st" id="libStatus"></span></h2>
+    <div id="libList"></div>
+    <div id="libEmpty"></div>
+    <div class="ctrlRow" id="libActions" style="margin-top:10px;">
+      <button id="btnLibRefresh">更新</button>
+      <button id="btnLibSetup">接続設定</button>
+    </div>
+    <div id="libSetup" style="display:none;">
+      <input id="libUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://script.google.com/macros/s/..../exec?k=合言葉">
+      <div class="ctrlRow">
+        <button id="btnLibSave" class="primary">保存して接続</button>
+        <button id="btnLibCancel">キャンセル</button>
+        <button id="btnLibClear">接続を解除</button>
+      </div>
+      <div class="note">セットアップ手順は「読み上げライブラリ_接続手順.md」を参照。URLはこの端末にだけ保存され、ページには埋め込まれません。</div>
+    </div>
+  </div>
+
   <div id="drop">
     <div><b>.txt / .md / .docx（Word）をここにドラッグ＆ドロップ</b>（クリックで選択・複数可）</div>
     <div class="small">Word・Markdownは本文だけ抽出して読み上げます。抽出は端末内処理で、テキストが外部に送信されることはありません（MP3化はPC版のみ・localhost内で処理）。</div>
@@ -155,6 +199,7 @@
     <div id="meta"></div>
     <div class="ctrlRow">
       <button id="btnPlay" class="primary">▶ 再生</button>
+      <button id="btnRestart" style="display:none;">↩ 最初から</button>
       <button id="btnPause" disabled>⏸ 一時停止</button>
       <button id="btnStop" disabled>⏹ 停止</button>
       <button id="btnPrev" disabled>⏮ 前の文</button>
@@ -209,11 +254,213 @@ let rate = 1.0;
 let serverOn = false;
 let fastCount = 0;      // 音声エンジン不調検知（即完了の連続回数）
 let utterStart = 0;
+let libFiles = [];      // Driveライブラリの一覧
+let progress = {};      // {key: {idx,total,name,at}}
+let syncTimer = null;
 
 const $ = id => document.getElementById(id);
 const drop = $("drop"), fileInput = $("fileInput");
 const btnPlay = $("btnPlay"), btnPause = $("btnPause"), btnStop = $("btnStop");
 const btnPrev = $("btnPrev"), btnNext = $("btnNext");
+
+/* ===== ライブラリ（Drive + GAS）と読了位置 ===== */
+const LS_URL = "yomiage.gasUrl";
+const LS_PROG = "yomiage.progress";
+
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+function lsDel(k){ try{ localStorage.removeItem(k); }catch(e){} }
+
+function gasUrl(){ return lsGet(LS_URL) || ""; }
+function gasToken(){
+  try{ return new URL(gasUrl()).searchParams.get("k") || ""; }catch(e){ return ""; }
+}
+
+function loadLocalProgress(){
+  try{ return JSON.parse(lsGet(LS_PROG) || "{}"); }catch(e){ return {}; }
+}
+function saveLocalProgress(){ lsSet(LS_PROG, JSON.stringify(progress)); }
+
+/** 同じキーなら新しい方（at）を採用してマージ */
+function mergeProgress(remote){
+  for(const [k, v] of Object.entries(remote || {})){
+    const mine = progress[k];
+    if(!mine || (v.at || "") > (mine.at || "")) progress[k] = v;
+  }
+  saveLocalProgress();
+}
+
+function gasPostBody(obj){
+  return JSON.stringify(Object.assign({k: gasToken()}, obj));
+}
+
+/** GETで取得。CORS等で失敗したらPOSTで再試行（GAS側は両方受ける） */
+async function gasGet(params){
+  const base = gasUrl();
+  if(!base) throw new Error("未接続");
+  let lastErr;
+  try{
+    const u = new URL(base);
+    for(const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
+    const r = await fetch(u.toString(), {redirect: "follow"});
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json();
+    if(j.error) throw new Error(j.error);
+    return j;
+  }catch(e){ lastErr = e; }
+  try{
+    const r = await fetch(base, {
+      method: "POST",
+      headers: {"Content-Type": "text/plain;charset=utf-8"},
+      body: gasPostBody(params),
+      redirect: "follow",
+    });
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json();
+    if(j.error) throw new Error(j.error);
+    return j;
+  }catch(e){
+    throw new Error(lastErr && lastErr.message ? lastErr.message : e.message);
+  }
+}
+
+async function syncProgressNow(){
+  const cur = queue[activeFile];
+  if(!gasUrl() || !cur || !cur.key || !progress[cur.key]) return;
+  const p = progress[cur.key];
+  try{
+    await fetch(gasUrl(), {
+      method: "POST",
+      headers: {"Content-Type": "text/plain;charset=utf-8"},
+      body: gasPostBody({action: "saveProgress", key: cur.key, idx: p.idx, total: p.total, name: p.name}),
+      keepalive: true,
+    });
+  }catch(e){ /* オフラインならローカルのみ。次回起動時に再送される */ }
+}
+
+function scheduleSync(){
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncProgressNow, 8000);
+}
+
+function recordProgress(idx){
+  const cur = queue[activeFile];
+  if(!cur || !cur.key) return;
+  progress[cur.key] = {
+    idx: idx, total: sentences.length, name: cur.name, at: new Date().toISOString(),
+  };
+  saveLocalProgress();
+  scheduleSync();
+  renderLibrary();
+}
+
+function progressPct(key, fallbackTotal){
+  const p = progress[key];
+  if(!p) return null;
+  const total = p.total || fallbackTotal || 0;
+  if(!total) return null;
+  return Math.min(100, Math.round(p.idx / total * 100));
+}
+
+/* --- ライブラリUI --- */
+function setLibStatus(msg){ $("libStatus").textContent = msg ? "／ " + msg : ""; }
+
+function renderLibrary(){
+  const list = $("libList"), empty = $("libEmpty");
+  list.innerHTML = "";
+  if(!gasUrl()){
+    empty.textContent = "未接続です。「接続設定」を押すと、PCで入れた文書をスマホからも聴けるようになります。";
+    return;
+  }
+  if(!libFiles.length){
+    empty.textContent = "ファイルがありません。PCでDriveの読み上げライブラリ・フォルダに .txt / .md / .docx を入れて「更新」を押してください。";
+    return;
+  }
+  empty.textContent = "";
+  const curKey = queue[activeFile] && queue[activeFile].key;
+  for(const f of libFiles){
+    const key = "drive:" + f.id;
+    const row = document.createElement("div");
+    row.className = "libRow" + (key === curKey ? " cur" : "");
+    const pct = progressPct(key);
+    const badge = pct === null ? ""
+      : `<span class="pg${pct >= 98 ? " done" : ""}">${pct >= 98 ? "読了" : pct > 0 ? pct + "%" : "途中"}</span>`;
+    row.innerHTML =
+      `<span class="nm"></span>` + badge +
+      `<span class="sz">${Math.round(f.size / 1024).toLocaleString()}KB</span>`;
+    row.querySelector(".nm").textContent = f.name;
+    row.onclick = () => openLibraryFile(f);
+    list.appendChild(row);
+  }
+}
+
+async function refreshLibrary(silent){
+  if(!gasUrl()){ renderLibrary(); return; }
+  setLibStatus("読込中…");
+  try{
+    const j = await gasGet({action: "list"});
+    libFiles = j.files || [];
+    mergeProgress(j.progress);
+    setLibStatus(libFiles.length + "件");
+  }catch(e){
+    setLibStatus("接続エラー");
+    if(!silent) $("libEmpty").textContent = "ライブラリに接続できません：" + e.message;
+  }
+  renderLibrary();
+}
+
+function b64ToBuf(b64){
+  const bin = atob(b64);
+  const buf = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  return buf.buffer;
+}
+
+async function openLibraryFile(f){
+  setLibStatus("取得中… " + f.name);
+  try{
+    const j = await gasGet({action: "get", id: f.id});
+    const buf = b64ToBuf(j.base64);
+    const text = await bufToText(f.name, buf);
+    if(!text){ setLibStatus("本文が空です"); return; }
+    stopSpeech();
+    queue = [{name: f.name, text, chars: text.length, key: "drive:" + f.id}];
+    activeFile = -1;
+    renderQueue();
+    loadFile(0, false);
+    setLibStatus(libFiles.length + "件");
+  }catch(e){
+    setLibStatus("取得失敗：" + e.message);
+  }
+}
+
+$("btnLibRefresh").onclick = () => refreshLibrary(false);
+$("btnLibSetup").onclick = () => {
+  const box = $("libSetup");
+  const open = box.style.display !== "none";
+  box.style.display = open ? "none" : "block";
+  if(!open) $("libUrl").value = gasUrl();
+};
+$("btnLibCancel").onclick = () => { $("libSetup").style.display = "none"; };
+$("btnLibSave").onclick = async () => {
+  const v = $("libUrl").value.trim();
+  let ok = false;
+  try{ const u = new URL(v); ok = /^https?:$/.test(u.protocol) && !!u.searchParams.get("k"); }catch(e){}
+  if(!ok){
+    setLibStatus("URLの形式が違います（…/exec?k=合言葉 の形で貼ってください）");
+    return;
+  }
+  lsSet(LS_URL, v);
+  $("libSetup").style.display = "none";
+  await refreshLibrary(false);
+};
+$("btnLibClear").onclick = () => {
+  lsDel(LS_URL);
+  libFiles = [];
+  $("libSetup").style.display = "none";
+  setLibStatus("");
+  renderLibrary();
+};
 
 /* ===== テキスト処理 ===== */
 function decodeBuf(buf){
@@ -308,16 +555,21 @@ function cleanPlain(t){
   return t.trim();
 }
 
-async function fileToText(f){
-  if(/\.docx$/i.test(f.name)){
-    showLoadMsg("Word読込中… " + f.name, true);
+async function bufToText(name, buf){
+  if(/\.docx$/i.test(name)){
+    showLoadMsg("Word読込中… " + name, true);
     await loadMammoth();
-    const res = await window.mammoth.extractRawText({arrayBuffer: await f.arrayBuffer()});
+    const res = await window.mammoth.extractRawText({arrayBuffer: buf});
+    showLoadMsg("");
     return cleanPlain(res.value);
   }
-  const text = decodeBuf(await f.arrayBuffer());
-  if(/\.(md|markdown)$/i.test(f.name)) return stripMarkdown(text);
+  const text = decodeBuf(buf);
+  if(/\.(md|markdown)$/i.test(name)) return stripMarkdown(text);
   return cleanPlain(text);
+}
+
+async function fileToText(f){
+  return bufToText(f.name, await f.arrayBuffer());
 }
 
 async function handleFiles(fileList){
@@ -331,7 +583,8 @@ async function handleFiles(fileList){
   for(const f of ok){
     try{
       const text = await fileToText(f);
-      if(text) queue.push({name: f.name, text, chars: text.length});
+      // 同名・同字数なら同じ本と見なし、読了位置を引き継ぐ（ライブラリ経由と別管理）
+      if(text) queue.push({name: f.name, text, chars: text.length, key: "local:" + f.name + ":" + text.length});
       else showLoadMsg(f.name + "：本文が空でした");
     }catch(e){
       showLoadMsg("読込失敗 " + f.name + "：" + e.message);
@@ -390,13 +643,22 @@ function loadFile(i, autoplay){
     paraDiv.appendChild(span);
   });
 
+  // 読了位置の復元（続きから再生できるようにする）
+  const saved = q.key ? progress[q.key] : null;
+  if(saved && saved.idx > 0 && saved.idx < sentences.length){
+    curIdx = saved.idx;
+    highlight(curIdx);
+  }
+
   $("ctrlCard").style.display = "block";
   $("transcriptCard").style.display = "block";
   $("meta").style.display = "block";
   updateMeta();
   updateProgress();
   renderQueue();
+  renderLibrary();
   updateMp3Ui();
+  setButtons();
   if(autoplay && sentences.length) speakFrom(0);
 }
 
@@ -421,6 +683,7 @@ function speakFrom(i){
   curIdx = i;
   highlight(i);
   updateProgress();
+  recordProgress(i);
   acquireWake();
   const u = new SpeechSynthesisUtterance(sentences[i]);
   const v = selectedVoice();
@@ -461,6 +724,8 @@ function nextAfter(i){
 function onFileDone(){
   playing = false; paused = false;
   window.speechSynthesis.cancel();
+  if(sentences.length) recordProgress(sentences.length);   // 読了として記録
+  syncProgressNow();
   if(activeFile + 1 < queue.length){
     loadFile(activeFile + 1, true);   // 次のファイルへ自動連続再生
   } else {
@@ -477,6 +742,7 @@ function stopSpeech(){
   window.speechSynthesis.cancel();
   setButtons();
   releaseWake();
+  syncProgressNow();
 }
 
 /* ===== 画面消灯防止（スマホ・対応ブラウザのみ表示） ===== */
@@ -494,8 +760,10 @@ function releaseWake(){
   wakeLock = null;
 }
 document.addEventListener("visibilitychange", () => {
-  if(document.visibilityState === "visible" && playing) acquireWake();
+  if(document.visibilityState === "visible"){ if(playing) acquireWake(); }
+  else syncProgressNow();               // 画面を閉じる/切り替える直前に読了位置を送る
 });
+window.addEventListener("pagehide", syncProgressNow);
 
 btnPlay.onclick = () => {
   if(paused){ window.speechSynthesis.resume(); paused = false; setButtons(); return; }
@@ -505,7 +773,8 @@ btnPlay.onclick = () => {
 btnPause.onclick = () => {
   if(playing && !paused){ window.speechSynthesis.pause(); paused = true; setButtons(); }
 };
-btnStop.onclick = () => { stopSpeech(); curIdx = -1; highlight(-1); updateProgress(); };
+btnStop.onclick = () => { stopSpeech(); setButtons(); };
+$("btnRestart").onclick = () => { fastCount = 0; speakFrom(0); };
 btnPrev.onclick = () => { if(curIdx > 0){ fastCount = 0; speakFrom(curIdx - 1); } };
 btnNext.onclick = () => { if(curIdx < sentences.length - 1){ fastCount = 0; speakFrom(curIdx + 1); } };
 
@@ -515,7 +784,12 @@ $("transcript").addEventListener("click", e => {
 });
 
 function setButtons(){
-  btnPlay.textContent = paused ? "▶ 再開" : "▶ 再生";
+  const resume = !paused && curIdx > 0 && charsTotal;
+  const pct = resume ? Math.round(sentOffsets[curIdx] / charsTotal * 100) : 0;
+  btnPlay.textContent = paused ? "▶ 再開"
+    : resume ? (pct > 0 ? `▶ 続きから (${pct}%)` : "▶ 続きから")
+    : "▶ 再生";
+  $("btnRestart").style.display = (!playing && curIdx > 0) ? "" : "none";
   btnPause.disabled = !playing || paused;
   btnStop.disabled = !playing && curIdx < 0;
   btnPrev.disabled = !(curIdx > 0);
@@ -705,6 +979,8 @@ $("btnMp3").onclick = async () => {
   }
 };
 
+progress = loadLocalProgress();
+refreshLibrary(true);
 checkServer();
 loadMp3Voices();
 setButtons();
