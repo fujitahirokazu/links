@@ -9,7 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="読み上げ">
 <title>テキスト読み上げツール</title>
-<!-- v4_20260730 ライブラリ対応：Drive+GASでPC↔スマホ共有／続き再生の端末間同期
+<!-- v5_20260731 間の調整（文間ポーズ・段落は長め）＋高速時ヒント
+     v4_20260730 ライブラリ対応：Drive+GASでPC↔スマホ共有／続き再生の端末間同期
      （v3=.docx対応, v2=モバイル対応, v1=PC版） -->
 <style>
   :root{
@@ -207,12 +208,19 @@
       <span class="sep"></span>
       <select id="voiceSel" title="ブラウザ再生の音声"></select>
       <span class="rateBox">速度 <input type="range" id="rateRange" min="0.5" max="2" step="0.1" value="1"><span id="rateVal">1.0x</span></span>
+      <span class="rateBox">間 <select id="gapSel" title="文と文のあいだの長さ">
+        <option value="0">詰める</option>
+        <option value="150">標準</option>
+        <option value="300" selected>ゆったり</option>
+        <option value="550">たっぷり</option>
+      </select></span>
     </div>
     <div id="progWrap">
       <div id="progBar"><div id="progFill"></div></div>
       <div id="progText"></div>
     </div>
     <div class="hint" id="voiceHint"></div>
+    <div class="hint" id="speedHint" style="color:var(--warn);"></div>
     <label class="wakeBox" id="wakeRow"><input type="checkbox" id="wakeChk" checked> 読み上げ中は画面を消灯しない（スマホ向け）</label>
   </div>
 
@@ -257,6 +265,9 @@ let utterStart = 0;
 let libFiles = [];      // Driveライブラリの一覧
 let progress = {};      // {key: {idx,total,name,at}}
 let syncTimer = null;
+let paraOf = [];        // 各文が属する段落番号（段落の切れ目で間を長くする）
+let gapMs = 300;        // 文と文のあいだ(ms)
+let gapTimer = null;
 
 const $ = id => document.getElementById(id);
 const drop = $("drop"), fileInput = $("fileInput");
@@ -619,6 +630,7 @@ function loadFile(i, autoplay){
   const q = queue[i];
   const sp = splitSentences(q.text);
   sentences = sp.sentences;
+  paraOf = sp.paraIdx;
   charsTotal = sentences.reduce((a, s) => a + s.length, 0);
   sentOffsets = [];
   let acc = 0;
@@ -676,6 +688,7 @@ function updateMeta(){
 /* ===== 再生 ===== */
 function speakFrom(i){
   if(!sentences.length) return;
+  clearTimeout(gapTimer);
   if(i >= sentences.length){ onFileDone(); return; }
   window.speechSynthesis.cancel();
   paused = false;
@@ -701,8 +714,10 @@ function speakFrom(i){
 
 function advance(i){
   // 音声エンジンが実際は鳴っていない場合（即完了が連続）に暴走せず停止する
+  // ※話速を上げると1文が短くなるため、閾値は「想定所要時間の15%」を上限に持たせる
   const dt = performance.now() - utterStart;
-  if(dt < 100 && sentences[i].length > 5){
+  const expected = sentences[i].length / (7.5 * rate) * 1000;   // 450字/分×rate 想定
+  if(dt < Math.min(100, expected * 0.15) && sentences[i].length > 5){
     fastCount++;
     if(fastCount >= 5){
       stopSpeech();
@@ -717,8 +732,12 @@ function advance(i){
 }
 
 function nextAfter(i){
-  if(i + 1 < sentences.length) speakFrom(i + 1);
-  else onFileDone();
+  if(i + 1 >= sentences.length){ onFileDone(); return; }
+  // 段落が変わるところは間を長めにとる（章題や話題の切れ目が分かるように）
+  const gap = (paraOf[i] !== undefined && paraOf[i] !== paraOf[i + 1]) ? gapMs * 2 : gapMs;
+  if(gap <= 0){ speakFrom(i + 1); return; }
+  clearTimeout(gapTimer);
+  gapTimer = setTimeout(() => { if(playing && !paused) speakFrom(i + 1); }, gap);
 }
 
 function onFileDone(){
@@ -739,6 +758,7 @@ function onFileDone(){
 
 function stopSpeech(){
   playing = false; paused = false;
+  clearTimeout(gapTimer);
   window.speechSynthesis.cancel();
   setButtons();
   releaseWake();
@@ -859,10 +879,25 @@ setTimeout(() => { if(!jaVoices.length) loadVoices(); }, 2000);
 $("rateRange").oninput = e => {
   rate = parseFloat(e.target.value);
   $("rateVal").textContent = rate.toFixed(1) + "x";
-  updateMeta(); updateProgress();
+  updateMeta(); updateProgress(); updateSpeedHint();
   // 反映は次の文から。再生中なら現在文を即読み直し
   if(playing && !paused) speakFrom(curIdx);
 };
+
+$("gapSel").onchange = e => { gapMs = parseInt(e.target.value, 10) || 0; };
+
+/** 高速時の音質劣化は音声エンジン側の問題なので、対処法を出しておく */
+function updateSpeedHint(){
+  const el = $("speedHint");
+  if(rate >= 1.4){
+    const hasNatural = jaVoices.some(v => /Online|Natural/i.test(v.name));
+    el.textContent = hasNatural
+      ? "速いと聞き取りづらいときは、右の音声を別のものに切り替えてみてください。"
+      : "速いと聞き取りづらいときは、Microsoft Edge で開く（自然な音声が使えます）か、音声を切り替えてください。さらに速く明瞭に聴きたい場合は、PCでMP3化して倍速再生が確実です。";
+  }else{
+    el.textContent = "";
+  }
+}
 
 /* ===== ドラッグ＆ドロップ ===== */
 drop.onclick = () => fileInput.click();
