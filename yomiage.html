@@ -9,7 +9,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="読み上げ">
 <title>テキスト読み上げツール</title>
-<!-- v5_20260731 間の調整（文間ポーズ・段落は長め）＋高速時ヒント
+<!-- v6_20260731 MP3統合：ライブラリの音声を再生（ロック画面OK・ピッチ補正倍速・秒単位の続き同期）
+     v5_20260731 間の調整（文間ポーズ・段落は長め）＋高速時ヒント
      v4_20260730 ライブラリ対応：Drive+GASでPC↔スマホ共有／続き再生の端末間同期
      （v3=.docx対応, v2=モバイル対応, v1=PC版） -->
 <style>
@@ -224,6 +225,27 @@
     <label class="wakeBox" id="wakeRow"><input type="checkbox" id="wakeChk" checked> 読み上げ中は画面を消灯しない（スマホ向け）</label>
   </div>
 
+  <div class="card" id="audioCard" style="display:none;">
+    <h2>音声を再生<span class="st" id="audioName"></span></h2>
+    <audio id="player" controls preload="metadata" style="width:100%;"></audio>
+    <div class="ctrlRow" style="margin-top:10px;">
+      <span class="rateBox">速度 <select id="audioRate">
+        <option value="0.75">0.75x</option>
+        <option value="1" selected>1.0x（等倍）</option>
+        <option value="1.25">1.25x</option>
+        <option value="1.5">1.5x</option>
+        <option value="1.75">1.75x</option>
+        <option value="2">2.0x</option>
+        <option value="2.5">2.5x</option>
+        <option value="3">3.0x</option>
+      </select></span>
+      <span class="sep"></span>
+      <button id="btnAudioBack">⏪ 15秒戻る</button>
+      <button id="btnAudioClose">閉じる</button>
+    </div>
+    <div class="hint" id="audioMsg"></div>
+  </div>
+
   <div class="card" id="transcriptCard">
     <h2>本文（文をクリックするとそこから再生）</h2>
     <div id="transcript"></div>
@@ -268,6 +290,9 @@ let syncTimer = null;
 let paraOf = [];        // 各文が属する段落番号（段落の切れ目で間を長くする）
 let gapMs = 300;        // 文と文のあいだ(ms)
 let gapTimer = null;
+let activeKey = null;   // 読了位置を記録する対象（テキスト/音声で共通）
+let activeName = "";
+let audioUrl = null;    // 再生中の音声のObjectURL
 
 const $ = id => document.getElementById(id);
 const drop = $("drop"), fileInput = $("fileInput");
@@ -336,14 +361,13 @@ async function gasGet(params){
 }
 
 async function syncProgressNow(){
-  const cur = queue[activeFile];
-  if(!gasUrl() || !cur || !cur.key || !progress[cur.key]) return;
-  const p = progress[cur.key];
+  if(!gasUrl() || !activeKey || !progress[activeKey]) return;
+  const p = progress[activeKey];
   try{
     await fetch(gasUrl(), {
       method: "POST",
       headers: {"Content-Type": "text/plain;charset=utf-8"},
-      body: gasPostBody({action: "saveProgress", key: cur.key, idx: p.idx, total: p.total, name: p.name}),
+      body: gasPostBody({action: "saveProgress", key: activeKey, idx: p.idx, total: p.total, name: p.name, kind: p.kind || "text"}),
       keepalive: true,
     });
   }catch(e){ /* オフラインならローカルのみ。次回起動時に再送される */ }
@@ -354,11 +378,11 @@ function scheduleSync(){
   syncTimer = setTimeout(syncProgressNow, 8000);
 }
 
-function recordProgress(idx){
-  const cur = queue[activeFile];
-  if(!cur || !cur.key) return;
-  progress[cur.key] = {
-    idx: idx, total: sentences.length, name: cur.name, at: new Date().toISOString(),
+function recordProgress(idx, total, kind){
+  if(!activeKey) return;
+  progress[activeKey] = {
+    idx: idx, total: total, name: activeName,
+    at: new Date().toISOString(), kind: kind || "text",
   };
   saveLocalProgress();
   scheduleSync();
@@ -388,7 +412,7 @@ function renderLibrary(){
     return;
   }
   empty.textContent = "";
-  const curKey = queue[activeFile] && queue[activeFile].key;
+  const curKey = activeKey;
   for(const f of libFiles){
     const key = "drive:" + f.id;
     const row = document.createElement("div");
@@ -396,10 +420,12 @@ function renderLibrary(){
     const pct = progressPct(key);
     const badge = pct === null ? ""
       : `<span class="pg${pct >= 98 ? " done" : ""}">${pct >= 98 ? "読了" : pct > 0 ? pct + "%" : "途中"}</span>`;
+    const size = f.size >= 1048576
+      ? (f.size / 1048576).toFixed(1) + "MB"
+      : Math.round(f.size / 1024).toLocaleString() + "KB";
     row.innerHTML =
-      `<span class="nm"></span>` + badge +
-      `<span class="sz">${Math.round(f.size / 1024).toLocaleString()}KB</span>`;
-    row.querySelector(".nm").textContent = f.name;
+      `<span class="nm"></span>` + badge + `<span class="sz">${size}</span>`;
+    row.querySelector(".nm").textContent = (isAudioName(f.name) ? "♪ " : "") + f.name;
     row.onclick = () => openLibraryFile(f);
     list.appendChild(row);
   }
@@ -427,7 +453,10 @@ function b64ToBuf(b64){
   return buf.buffer;
 }
 
+function isAudioName(n){ return /\.(mp3|m4a|aac|wav|ogg)$/i.test(n); }
+
 async function openLibraryFile(f){
+  if(isAudioName(f.name)) return openAudioFile(f);
   setLibStatus("取得中… " + f.name);
   try{
     const j = await gasGet({action: "get", id: f.id});
@@ -444,6 +473,108 @@ async function openLibraryFile(f){
     setLibStatus("取得失敗：" + e.message);
   }
 }
+
+/* --- 音声（MP3等）の再生。テキスト読み上げと違い、画面ロック中も鳴り、倍速でも音が潰れない --- */
+function fmtTime(s){
+  if(!isFinite(s) || s < 0) s = 0;
+  const m = Math.floor(s / 60), ss = Math.floor(s % 60);
+  return m + ":" + String(ss).padStart(2, "0");
+}
+
+function closeAudio(){
+  const pl = $("player");
+  if(!pl.paused) pl.pause();
+  pl.removeAttribute("src");
+  pl.load();
+  if(audioUrl){ URL.revokeObjectURL(audioUrl); audioUrl = null; }
+  $("audioCard").style.display = "none";
+}
+
+async function openAudioFile(f){
+  const mb = f.size / 1048576;
+  setLibStatus(`取得中… ${f.name}（${mb.toFixed(1)}MB）`);
+  $("audioMsg").textContent = mb > 15
+    ? "大きいファイルなので読み込みに時間がかかります。"
+    : "";
+  try{
+    const j = await gasGet({action: "get", id: f.id});
+    stopSpeech();
+    closeAudio();
+
+    const buf = b64ToBuf(j.base64);
+    audioUrl = URL.createObjectURL(new Blob([buf], {type: "audio/mpeg"}));
+
+    activeKey = "drive:" + f.id;
+    activeName = f.name;
+    queue = []; activeFile = -1; sentences = [];
+    $("ctrlCard").style.display = "none";
+    $("transcriptCard").style.display = "none";
+    $("mp3Card").style.display = "none";
+    $("queue").style.display = "none";
+    $("audioCard").style.display = "block";
+    $("audioName").textContent = "／ " + f.name;
+
+    const pl = $("player");
+    pl.src = audioUrl;
+    pl.playbackRate = parseFloat($("audioRate").value) || 1;
+    if("preservesPitch" in pl) pl.preservesPitch = true;      // 倍速でも声の高さを保つ
+
+    const saved = progress[activeKey];
+    pl.onloadedmetadata = () => {
+      if(saved && saved.idx > 0 && saved.idx < pl.duration - 2){
+        pl.currentTime = saved.idx;
+        $("audioMsg").textContent = `前回の続き（${fmtTime(saved.idx)}）から再生できます。`;
+      }
+      setMediaSession(f.name);
+    };
+    pl.play().catch(() => {
+      $("audioMsg").textContent = "▶ を押すと再生します。";
+    });
+    setLibStatus(libFiles.length + "件");
+    renderLibrary();
+  }catch(e){
+    setLibStatus("取得失敗");
+    $("audioCard").style.display = "block";
+    $("audioMsg").innerHTML =
+      `取得できませんでした（${escapeHtml(e.message)}）。ファイルが大きすぎる可能性があります。` +
+      `<a href="https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view" target="_blank" rel="noopener">Driveアプリで開く</a>`;
+  }
+}
+
+function setMediaSession(title){
+  if(!("mediaSession" in navigator)) return;
+  try{
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: title.replace(/\.(mp3|m4a|aac|wav|ogg)$/i, ""),
+      artist: "読み上げライブラリ",
+    });
+  }catch(e){}
+}
+
+(function initAudio(){
+  const pl = $("player");
+  let last = 0;
+  pl.addEventListener("timeupdate", () => {
+    if(!activeKey || !isFinite(pl.duration)) return;
+    const t = Math.floor(pl.currentTime);
+    if(t === last) return;
+    last = t;
+    recordProgress(t, Math.floor(pl.duration), "audio");
+  });
+  pl.addEventListener("pause", syncProgressNow);
+  pl.addEventListener("ended", () => {
+    if(activeKey && isFinite(pl.duration)){
+      recordProgress(Math.floor(pl.duration), Math.floor(pl.duration), "audio");
+      syncProgressNow();
+    }
+  });
+  $("audioRate").onchange = e => {
+    pl.playbackRate = parseFloat(e.target.value) || 1;
+    if("preservesPitch" in pl) pl.preservesPitch = true;
+  };
+  $("btnAudioBack").onclick = () => { pl.currentTime = Math.max(0, pl.currentTime - 15); };
+  $("btnAudioClose").onclick = () => { syncProgressNow(); closeAudio(); };
+})();
 
 $("btnLibRefresh").onclick = () => refreshLibrary(false);
 $("btnLibSetup").onclick = () => {
@@ -655,6 +786,10 @@ function loadFile(i, autoplay){
     paraDiv.appendChild(span);
   });
 
+  activeKey = q.key || null;
+  activeName = q.name;
+  closeAudio();
+
   // 読了位置の復元（続きから再生できるようにする）
   const saved = q.key ? progress[q.key] : null;
   if(saved && saved.idx > 0 && saved.idx < sentences.length){
@@ -696,7 +831,7 @@ function speakFrom(i){
   curIdx = i;
   highlight(i);
   updateProgress();
-  recordProgress(i);
+  recordProgress(i, sentences.length, 'text');
   acquireWake();
   const u = new SpeechSynthesisUtterance(sentences[i]);
   const v = selectedVoice();
@@ -743,7 +878,7 @@ function nextAfter(i){
 function onFileDone(){
   playing = false; paused = false;
   window.speechSynthesis.cancel();
-  if(sentences.length) recordProgress(sentences.length);   // 読了として記録
+  if(sentences.length) recordProgress(sentences.length, sentences.length, 'text');   // 読了として記録
   syncProgressNow();
   if(activeFile + 1 < queue.length){
     loadFile(activeFile + 1, true);   // 次のファイルへ自動連続再生
