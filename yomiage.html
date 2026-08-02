@@ -9,7 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="読み上げ">
 <title>テキスト読み上げツール</title>
-<!-- v6_20260731 MP3統合：ライブラリの音声を再生（ロック画面OK・ピッチ補正倍速・秒単位の続き同期）
+<!-- v7_20260802 ローカルMP3対応：Drive同期フォルダのMP3をドロップして倍速再生（GASの50MB上限を迂回）
+                 ／50MB超のライブラリ音声は取りに行かず案内を出す
+     v6_20260731 MP3統合：ライブラリの音声を再生（ロック画面OK・ピッチ補正倍速・秒単位の続き同期）
      v5_20260731 間の調整（文間ポーズ・段落は長め）＋高速時ヒント
      v4_20260730 ライブラリ対応：Drive+GASでPC↔スマホ共有／続き再生の端末間同期
      （v3=.docx対応, v2=モバイル対応, v1=PC版） -->
@@ -177,10 +179,10 @@
   </div>
 
   <div id="drop">
-    <div><b>.txt / .md / .docx（Word）をここにドラッグ＆ドロップ</b>（クリックで選択・複数可）</div>
-    <div class="small">Word・Markdownは本文だけ抽出して読み上げます。抽出は端末内処理で、テキストが外部に送信されることはありません（MP3化はPC版のみ・localhost内で処理）。</div>
+    <div><b>.txt / .md / .docx（Word）／ .mp3 をここにドラッグ＆ドロップ</b>（クリックで選択・複数可）</div>
+    <div class="small">Word・Markdownは本文だけ抽出して読み上げます。<b>MP3を落とすと0.75〜3.0倍・ピッチ補正つきで再生</b>（PCのDrive同期フォルダにある大きい音声はこの経路が速い）。処理はすべて端末内で、ファイルが外部に送信されることはありません。</div>
     <div class="small" id="loadMsg"></div>
-    <input type="file" id="fileInput" accept=".txt,.md,.markdown,.docx,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
+    <input type="file" id="fileInput" accept=".txt,.md,.markdown,.docx,.mp3,.m4a,.aac,.wav,.ogg,text/plain,audio/*,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
   </div>
 
   <div class="card" id="pasteCard">
@@ -490,55 +492,92 @@ function closeAudio(){
   $("audioCard").style.display = "none";
 }
 
+/** GASが1回で返せる上限（Apps ScriptのBlob制限）。これを超えるものは取りに行かない */
+const GAS_MAX_MB = 50;
+
+/** 音声を鳴らす本体。Drive経由でもローカルのファイルでもここに来る */
+function playAudioBlob(blob, name, key, note){
+  stopSpeech();
+  closeAudio();
+  audioUrl = URL.createObjectURL(blob);
+
+  activeKey = key;
+  activeName = name;
+  queue = []; activeFile = -1; sentences = [];
+  $("ctrlCard").style.display = "none";
+  $("transcriptCard").style.display = "none";
+  $("mp3Card").style.display = "none";
+  $("queue").style.display = "none";
+  $("audioCard").style.display = "block";
+  $("audioName").textContent = "／ " + name;
+  $("audioMsg").textContent = note || "";
+
+  const pl = $("player");
+  pl.src = audioUrl;
+  pl.playbackRate = parseFloat($("audioRate").value) || 1;
+  if("preservesPitch" in pl) pl.preservesPitch = true;      // 倍速でも声の高さを保つ
+
+  const saved = progress[activeKey];
+  pl.onloadedmetadata = () => {
+    if(saved && saved.idx > 0 && saved.idx < pl.duration - 2){
+      pl.currentTime = saved.idx;
+      $("audioMsg").textContent = `前回の続き（${fmtTime(saved.idx)}）から再生できます。`;
+    }
+    setMediaSession(name);
+  };
+  pl.play().catch(() => {
+    $("audioMsg").textContent = "▶ を押すと再生します。";
+  });
+  renderLibrary();
+}
+
+/** ライブラリの音声（Drive経由）。50MB超はGASが返せないのでDriveへ誘導する */
 async function openAudioFile(f){
   const mb = f.size / 1048576;
+  if(mb > GAS_MAX_MB) return audioTooBig(f, mb);
   setLibStatus(`取得中… ${f.name}（${mb.toFixed(1)}MB）`);
-  $("audioMsg").textContent = mb > 15
-    ? "大きいファイルなので読み込みに時間がかかります。"
-    : "";
+  $("audioMsg").textContent = mb > 15 ? "大きいファイルなので読み込みに時間がかかります。" : "";
   try{
     const j = await gasGet({action: "get", id: f.id});
-    stopSpeech();
-    closeAudio();
-
-    const buf = b64ToBuf(j.base64);
-    audioUrl = URL.createObjectURL(new Blob([buf], {type: "audio/mpeg"}));
-
-    activeKey = "drive:" + f.id;
-    activeName = f.name;
-    queue = []; activeFile = -1; sentences = [];
-    $("ctrlCard").style.display = "none";
-    $("transcriptCard").style.display = "none";
-    $("mp3Card").style.display = "none";
-    $("queue").style.display = "none";
-    $("audioCard").style.display = "block";
-    $("audioName").textContent = "／ " + f.name;
-
-    const pl = $("player");
-    pl.src = audioUrl;
-    pl.playbackRate = parseFloat($("audioRate").value) || 1;
-    if("preservesPitch" in pl) pl.preservesPitch = true;      // 倍速でも声の高さを保つ
-
-    const saved = progress[activeKey];
-    pl.onloadedmetadata = () => {
-      if(saved && saved.idx > 0 && saved.idx < pl.duration - 2){
-        pl.currentTime = saved.idx;
-        $("audioMsg").textContent = `前回の続き（${fmtTime(saved.idx)}）から再生できます。`;
-      }
-      setMediaSession(f.name);
-    };
-    pl.play().catch(() => {
-      $("audioMsg").textContent = "▶ を押すと再生します。";
-    });
+    playAudioBlob(new Blob([b64ToBuf(j.base64)], {type: "audio/mpeg"}), f.name, "drive:" + f.id);
     setLibStatus(libFiles.length + "件");
-    renderLibrary();
   }catch(e){
     setLibStatus("取得失敗");
     $("audioCard").style.display = "block";
     $("audioMsg").innerHTML =
-      `取得できませんでした（${escapeHtml(e.message)}）。ファイルが大きすぎる可能性があります。` +
-      `<a href="https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view" target="_blank" rel="noopener">Driveアプリで開く</a>`;
+      `取得できませんでした（${escapeHtml(e.message)}）。` + driveLinks(f);
   }
+}
+
+/** 大きすぎて取りに行けない音声の案内（押してから待たせない） */
+function audioTooBig(f, mb){
+  closeAudio();
+  activeKey = "drive:" + f.id;
+  activeName = f.name;
+  $("audioCard").style.display = "block";
+  $("audioName").textContent = "／ " + f.name;
+  $("audioMsg").innerHTML =
+    `${mb.toFixed(1)}MB あるため、このページからは取り出せません（サーバ側の上限 ${GAS_MAX_MB}MB）。` + driveLinks(f);
+  $("player").removeAttribute("src");
+  setLibStatus(libFiles.length + "件");
+}
+
+function driveLinks(f){
+  return `<br><b>PCで倍速で聴く</b>：Driveの同期フォルダにある ` +
+    `<code>${escapeHtml(f.name)}</code> を、このページの下のドロップ欄に放り込んでください` +
+    `（速度・ピッチ補正つきで即再生できます）。<br>` +
+    `<b>スマホ</b>：<a href="https://drive.google.com/file/d/${encodeURIComponent(f.id)}/view" ` +
+    `target="_blank" rel="noopener">Driveアプリで開く</a>`;
+}
+
+/** PCのローカルにある音声ファイル（H:ドライブ等）をそのまま再生する。GASを通らないので大きさ無制限 */
+function openLocalAudio(file){
+  // ライブラリに同名があれば、そのキーを使って読了位置をライブラリ側と共有する
+  const same = (libFiles || []).find(x => x.name === file.name);
+  const key = same ? "drive:" + same.id : "local:" + file.name + ":" + file.size;
+  playAudioBlob(file, file.name, key,
+    same ? "ライブラリの同名ファイルと読了位置を共有します。" : "");
+  showLoadMsg("");
 }
 
 function setMediaSession(title){
@@ -715,9 +754,16 @@ async function fileToText(f){
 }
 
 async function handleFiles(fileList){
-  const ok = [...fileList].filter(f => /\.(txt|md|markdown|docx)$/i.test(f.name));
+  const all = [...fileList];
+  const audio = all.filter(f => isAudioName(f.name));
+  if(audio.length){                       // 音声は1本ずつ再生（複数落とされたら先頭）
+    if(audio.length > 1) showLoadMsg(`音声は1本ずつです。${audio[0].name} を再生します。`);
+    openLocalAudio(audio[0]);
+    return;
+  }
+  const ok = all.filter(f => /\.(txt|md|markdown|docx)$/i.test(f.name));
   if(!ok.length){
-    showLoadMsg("対応形式は .txt / .md / .docx です（.doc は非対応）");
+    showLoadMsg("対応形式は .txt / .md / .docx / .mp3 です（.doc は非対応）");
     return;
   }
   stopSpeech();
