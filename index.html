@@ -189,6 +189,19 @@
   // 指名導線に流入元(?s=)を引き継ぐ
   (function(){ var c=document.getElementById('contactLink'); if(c && location.search) c.href = 'contact.html' + location.search; })();
 
+  // 相談導線を、SNS群の後ろから「事例集のすぐ下（2番目）」へ移す。（2026-08-24）
+  //   実測：ハブの実クリック19件のうち「取材・登壇・ご相談」は **0件**。
+  //   上に並ぶ9本は全部「フォローして／読んで」の無償リンクで、クリックを全部吸っていた。
+  //   さらに相談だけ .links の外に置かれていたため幅が狭く、視覚的にも最弱だった。
+  //   .links の中へ入れれば、幅も間隔も他と同じになる（CSSの変更は不要）。
+  //   **1番目には置かない。** 先に価値（事例集）を渡してから頼む順序にする。
+  //   文言は1文字も変えていない。位置と強弱だけを動かして、次に何が効いたか切り分けるため。
+  //   JS が落ちても元の位置に残るだけで、リンク自体は死なない。
+  (function(){
+    var n = document.getElementById('links'), c = document.getElementById('contactLink');
+    if (n && c && n.children.length > 1) n.insertBefore(c, n.children[1]);
+  })();
+
   // ===== 紹介した本（アフィリエイト導線） =====
   // 収益化手順: もしもアフィリエイト/Amazonアソシエイト等に登録後、(1)AMAZON_TAGにタグを入れる か (2)各bookに url:"発行リンク" を足す。
   // 空のままでも購入導線＋クリック計測は機能（未収益化でもデータは貯まる）。
